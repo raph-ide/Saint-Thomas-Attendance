@@ -20,6 +20,12 @@ h1, h3 {
   text-align: left;
 }
 
+h2 {
+  font-weight: 500;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
 input, button, textarea {
   font-family: inherit;
   border-radius: 12px;
@@ -168,10 +174,12 @@ li:active {
 
 <h1>Saint Thomas Youth Group Attendance and Table Sorter</h1>
 
+<h2>By Raph</h2>
+
 <!-- MODE SELECTOR -->
 <div class="mode-buttons">
-  <button id="rosaryModeBtn" class="mode-button" onclick="setMode('rosary')">Rosary Mode</button>
-  <button id="youthModeBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group Mode</button>
+  <button id="rosaryModeBtn" class="mode-button" onclick="setMode('rosary')">Rosary Attendance</button>
+  <button id="youthModeBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group Attendance</button>
 </div>
 
 <!-- PRESENT ATTENDEES (SHARED BY BOTH MODES) -->
@@ -203,6 +211,19 @@ li:active {
 
   <div id="output"></div>
 </div>
+
+<h3>Attendance List (Copy and paste from here!)</h3>
+<textarea id="copyList" style="
+  width: 100%;
+  height: 180px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  resize: vertical;
+"></textarea>
+
+
 
 <!-- EXPORT BUTTON (AVAILABLE IN BOTH MODES) -->
 <button onclick="exportToCSV()" id="exportButton" style="background:#28a745; margin-top:10px;">Export Present People to CSV</button>
@@ -302,17 +323,20 @@ function setupAutocomplete(inputId, suggestionsId, selectedId, sourceList, targe
         selected.appendChild(note);
       }
     });
+  updateCopyList();
   }
 
   function selectName(name) {
     if (isPresent) {
       targetArray.push({ name, notes: "" });
-    } else {
+    } 
+    else {
       targetArray.push(name);
     }
     input.value = "";
     activeIndex = -1;
     renderSelected();
+    updateCopyList();
     suggestions.innerHTML = "";
     input.focus();
   }
@@ -350,13 +374,35 @@ function setupAutocomplete(inputId, suggestionsId, selectedId, sourceList, targe
   return renderSelected;
 }
 
+function updateCopyList() {
+  let names = [];
+
+  presentList.forEach(p => {
+    if (coreList.includes(p.name)) {
+      names.push(p.name + " (CORE)");
+    } else {
+      names.push(p.name);
+    }
+  });
+
+  coreList.forEach(c => {
+    if (!presentList.some(p => p.name === c)) {
+      names.push(c + " (CORE)");
+    }
+  });
+
+  document.getElementById("copyList").value = names.join("\n");
+}
+
 function removeName(name, selectedId) {
   if (selectedId === "presentSelected") {
     presentList = presentList.filter(obj => obj.name !== name);
     renderPresent();
+    updateCopyList();
   } else {
     coreList = coreList.filter(n => n !== name);
     renderCore();
+    updateCopyList();
   }
 }
 
@@ -526,8 +572,6 @@ function setMode(mode) {
     rosaryBtn.classList.remove("active-mode");
   }
 }
-
-// ensure initial mode styling
 setMode('youth');
 </script>
 
