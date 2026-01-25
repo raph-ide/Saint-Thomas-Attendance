@@ -14,14 +14,7 @@ body {
   padding: 20px;
 }
 
-.footer-text {
-  margin-top: 40px;
-  font-size: 12px;
-  color: #6e6e73;
-  text-align: center;
-}
-
-h1, h2, h3 {
+h1, h3 {
   font-weight: 600;
   margin-bottom: 10px;
   text-align: left;
@@ -141,6 +134,33 @@ li:active {
   color: #6e6e73;
   text-align: center;
 }
+
+/* Mode buttons */
+.mode-buttons {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.mode-button {
+  flex: 1;
+  padding: 10px;
+  border-radius: 999px;
+  border: 1px solid #d1d1d6;
+  background-color: #e5e5ea;
+  color: #1c1c1e;
+  font-weight: 600;
+}
+
+.mode-button.active-mode {
+  background-color: #007aff;
+  color: white;
+  border-color: #007aff;
+}
+
+.hidden {
+  display: none !important;
+}
 </style>
 </head>
 
@@ -148,9 +168,13 @@ li:active {
 
 <h1>Saint Thomas Youth Group Attendance and Table Sorter</h1>
 
-<h2>By Raph</h2>
+<!-- MODE SELECTOR -->
+<div class="mode-buttons">
+  <button id="rosaryModeBtn" class="mode-button" onclick="setMode('rosary')">Rosary Mode</button>
+  <button id="youthModeBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group Mode</button>
+</div>
 
-<!-- PRESENT ATTENDEES -->
+<!-- PRESENT ATTENDEES (SHARED BY BOTH MODES) -->
 <h3>Present Attendees</h3>
 <div class="autocomplete-box">
   <input id="presentInput" type="text" placeholder="Type a name..." autocomplete="off">
@@ -158,28 +182,36 @@ li:active {
 </div>
 <div id="presentSelected" class="selected-list"></div>
 
-<!-- CORE MEMBERS -->
-<h3>Core Members</h3>
-<div class="autocomplete-box">
-  <input id="coreInput" type="text" placeholder="Type a core member..." autocomplete="off">
-  <div id="coreSuggestions" class="suggestions"></div>
+<!-- YOUTH GROUP ONLY FEATURES WRAPPED HERE -->
+<div id="youthFeatures">
+  <!-- CORE MEMBERS -->
+  <h3>Core Members</h3>
+  <div class="autocomplete-box">
+    <input id="coreInput" type="text" placeholder="Type a core member..." autocomplete="off">
+    <div id="coreSuggestions" class="suggestions"></div>
+  </div>
+  <div id="coreSelected" class="selected-list"></div>
+
+  <h3>Groups That Must Sit Together (comma separated per line)</h3>
+  <textarea id="togetherGroups"></textarea>
+
+  <h3>Number of Tables</h3>
+  <input type="number" id="numTables" min="1" value="8" />
+
+  <br>
+  <button onclick="generateTables()">Generate Tables</button>
+
+  <div id="output"></div>
 </div>
-<div id="coreSelected" class="selected-list"></div>
 
-<h3>Groups That Must Sit Together (comma separated per line)</h3>
-<textarea id="togetherGroups"></textarea>
+<!-- EXPORT BUTTON (AVAILABLE IN BOTH MODES) -->
+<button onclick="exportToCSV()" id="exportButton" style="background:#28a745; margin-top:10px;">Export Present People to CSV</button>
 
-<h3>Number of Tables</h3>
-<input type="number" id="numTables" min="1" value="8" />
-
-<br>
-<button onclick="generateTables()">Generate Tables</button>
-<button onclick="exportToCSV()" id="exportButton" style="background:#28a745;">Export Present People to CSV</button>
-
-<div id="output"></div>
+<div class="footer-text">
+  &copy; 2026 Saint Thomas the Apostle Youth Group by Raphael Ide. All rights reserved.
+</div>
 
 <script>
-
 const allAttendees = [
   'Mara Wesolowski','Allie Choate','Bria Santoro','MariaTeresa Arena',
   'Danny Kuyrouz','Amelia Cannato','Carmine Arena','Frencesco Arena',
@@ -216,6 +248,7 @@ const defaultCore = [
 let presentList = [];  // objects: { name, notes }
 let coreList = [];
 let tables = [];       // global for drag/drop
+let currentMode = 'youth'; // default
 
 function setupAutocomplete(inputId, suggestionsId, selectedId, sourceList, targetArray, isPresent=false) {
   const input = document.getElementById(inputId);
@@ -473,9 +506,28 @@ function drop(ev, tableIndex) {
   renderTables();
 }
 
+/* MODE SWITCHING */
+function setMode(mode) {
+  currentMode = mode;
+
+  const youthFeatures = document.getElementById("youthFeatures");
+  const rosaryBtn = document.getElementById("rosaryModeBtn");
+  const youthBtn = document.getElementById("youthModeBtn");
+
+  if (mode === 'rosary') {
+    youthFeatures.classList.add("hidden");
+    rosaryBtn.classList.add("active-mode");
+    youthBtn.classList.remove("active-mode");
+  } else {
+    youthFeatures.classList.remove("hidden");
+    youthBtn.classList.add("active-mode");
+    rosaryBtn.classList.remove("active-mode");
+  }
+}
+
+// ensure initial mode styling
+setMode('youth');
 </script>
-<div class="footer-text">
-  &copy; 2026 Saint Thomas the Apostle Youth Group by Raphael Ide. All rights reserved.
-</div>
+
 </body>
 </html>
