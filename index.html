@@ -6,235 +6,275 @@
 <title>Saint Thomas Attendance</title>
 
 <style>
+/* =========================
+   GLOBAL
+========================= */
+* { box-sizing: border-box; }
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Comic Sans MS", sans-serif;
-  background-color: #f5f5f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: linear-gradient(#f5f5f7, #ffffff);
   color: #1c1c1e;
   margin: 0;
-  padding: 20px;
+  padding: 24px;
+  max-width: 1100px;
+  margin-inline: auto;
 }
 
-h1, h3 {
+/* =========================
+   TYPOGRAPHY
+========================= */
+h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+h3 {
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 10px;
-  text-align: left;
+  margin: 20px 0 8px;
+  color: #3a3a3c;
 }
 
-h2 {
-  font-weight: 300;
-  margin-bottom: 10px;
-  text-align: left;
+/* =========================
+   CARDS
+========================= */
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
 }
 
-input, button, textarea {
+/* =========================
+   INPUTS
+========================= */
+input, textarea, button {
   font-family: inherit;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 12px;
   border-radius: 12px;
   border: 1px solid #d1d1d6;
-  padding: 10px;
-  margin: 5px 0;
-  outline: none;
+  font-size: 15px;
 }
 
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #007aff;
+}
+
+/* =========================
+   BUTTONS
+========================= */
 button {
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
   background-color: #007aff;
   color: white;
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s;
+  box-shadow: 0 6px 14px rgba(0,122,255,0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-button:hover { background-color: #0051a8; }
-
-.autocomplete-box {
-  position: relative;
-  width: 100%;
+button:hover { transform: translateY(-1px); }
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px rgba(0,122,255,0.25);
 }
+
+button.secondary {
+  background: #28a745;
+  box-shadow: 0 6px 14px rgba(40,167,69,0.25);
+}
+
+/* =========================
+   MODE TOGGLE
+========================= */
+.mode-buttons {
+  display: flex;
+  gap: 6px;
+  background: #e5e5ea;
+  padding: 6px;
+  border-radius: 999px;
+  margin-bottom: 24px;
+}
+
+.mode-button {
+  flex: 1;
+  background: transparent;
+  color: #3a3a3c;
+  box-shadow: none;
+}
+
+.mode-button.active-mode {
+  background: white;
+  color: #007aff;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* =========================
+   AUTOCOMPLETE
+========================= */
+.autocomplete-box { position: relative; }
 
 .suggestions {
   position: absolute;
-  background: white;
-  border: 1px solid #ccc;
-  border-radius: 10px;
   width: 100%;
+  margin-top: 6px;
+  background: white;
+  border-radius: 12px;
   max-height: 180px;
   overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
   z-index: 20;
 }
 
 .suggestion-item {
-  padding: 8px 12px;
+  padding: 10px 12px;
   cursor: pointer;
 }
 
 .suggestion-item:hover,
 .suggestion-item.active {
-  background-color: #e5e5ea;
+  background: #f2f2f7;
 }
 
-.selected-list {
-  margin-top: 10px;
-  padding: 10px;
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #d1d1d6;
-}
-
+/* =========================
+   SELECTED PILLS
+========================= */
 .selected-pill {
-  background: #007aff;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  margin: 4px;
-  font-size: 14px;
   display: inline-block;
+  padding: 6px 12px;
+  margin: 4px;
+  border-radius: 20px;
+  background: #f2f2f7;
+  border: 1px solid #d1d1d6;
 }
 
 .selected-pill span {
   margin-left: 8px;
+  color: #ff3b30;
   cursor: pointer;
   font-weight: bold;
 }
 
 .note-box {
-  display: block;
-  margin-top: 5px;
-  margin-bottom: 10px;
   width: 100%;
-  border-radius: 8px;
-  padding: 6px;
-  border: 1px solid #ccc;
+  margin: 6px 0 12px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #d1d1d6;
+}
+
+/* =========================
+   TABLES
+========================= */
+#output {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+  gap: 16px;
+  margin-top: 16px;
 }
 
 .table {
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-  padding: 15px;
-  width: 100%;
-  box-sizing: border-box;
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
 }
 
-#output {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 15px;
-  margin-top: 15px;
+.table h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #e5e5ea;
+  padding-bottom: 8px;
 }
 
 li {
   list-style: none;
-  padding: 6px;
-  margin: 4px 0;
-  background: #f0f0f5;
-  border-radius: 6px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
   cursor: grab;
 }
 
-li:active {
-  cursor: grabbing;
-}
-
+/* ========================= */
+.hidden { display: none; }
 .footer-text {
   margin-top: 40px;
   font-size: 12px;
   color: #6e6e73;
   text-align: center;
 }
-
-/* Mode buttons */
-.mode-buttons {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.mode-button {
-  flex: 1;
-  padding: 10px;
-  border-radius: 999px;
-  border: 1px solid #d1d1d6;
-  background-color: #e5e5ea;
-  color: #1c1c1e;
-  font-weight: 600;
-}
-
-.mode-button.active-mode {
-  background-color: #007aff;
-  color: white;
-  border-color: #007aff;
-}
-
-.hidden {
-  display: none !important;
-}
 </style>
 </head>
 
 <body>
 
-<h1>Saint Thomas Youth Group Attendance and Table Sorter</h1>
+<h1>Saint Thomas Youth Group Attendance</h1>
 
-  <!-- MODE SELECTOR -->
 <div class="mode-buttons">
-  <button id="rosaryModeBtn" class="mode-button" onclick="setMode('rosary')">Rosary/Holy Hour Attendance</button>
-  <button id="youthModeBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group Attendance</button>
+  <button type="button" id="rosaryBtn" class="mode-button" onclick="setMode('rosary')">Rosary / Holy Hour</button>
+  <button type="button" id="youthBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group</button>
 </div>
 
-<!-- PRESENT ATTENDEES (SHARED BY BOTH MODES) -->
-<h3>Present Attendees</h3>
-<div class="autocomplete-box">
-  <input id="presentInput" type="text" placeholder="Type a name..." autocomplete="off">
-  <div id="presentSuggestions" class="suggestions"></div>
-</div>
-<div id="presentSelected" class="selected-list"></div>
-
-<!-- YOUTH GROUP ONLY FEATURES WRAPPED HERE -->
-<div id="youthFeatures">
-  <!-- CORE MEMBERS -->
-  <h3>Core Members</h3>
+<div class="card">
+  <h3>Present Attendees</h3>
   <div class="autocomplete-box">
-    <input id="coreInput" type="text" placeholder="Type a core member..." autocomplete="off">
-    <div id="coreSuggestions" class="suggestions"></div>
+    <input id="presentInput" placeholder="Type a name..." autocomplete="off">
+    <div id="presentSuggestions" class="suggestions"></div>
   </div>
-  <div id="coreSelected" class="selected-list"></div>
-
-  <h3>Groups That Must Sit Together (comma separated per line)</h3>
-  <textarea id="togetherGroups"></textarea>
-
-  <h3>Number of Tables</h3>
-  <input type="number" id="numTables" min="1" value="8" />
-
-  <br>
-  <button onclick="generateTables()">Generate Tables</button>
-
-  <div id="output"></div>
+  <div id="presentSelected"></div>
 </div>
 
-<h3>Attendance List (Copy and paste from here!)</h3>
-<textarea id="copyList" style="
-  width: 100%;
-  height: 180px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #ccc;
-  font-size: 16px;
-  resize: vertical;
-"></textarea>
+<div id="youthFeatures">
 
+  <div class="card">
+    <h3>Core Members</h3>
+    <div class="autocomplete-box">
+      <input id="coreInput" placeholder="Type a core member..." autocomplete="off">
+      <div id="coreSuggestions" class="suggestions"></div>
+    </div>
+    <div id="coreSelected"></div>
+  </div>
 
+  <div class="card">
+    <h3>Groups That Must Sit Together</h3>
+    <textarea id="togetherGroups"></textarea>
 
-<!-- EXPORT BUTTON (AVAILABLE IN BOTH MODES) -->
-<button onclick="exportToCSV()" id="exportButton" style="background:#28a745; margin-top:10px;">Export Present People to CSV</button>
+    <h3>Number of Tables</h3>
+    <input type="number" id="numTables" min="1" value="8">
+
+    <br><br>
+    <button type="button" onclick="generateTables()">Generate Tables</button>
+
+    <div id="output"></div>
+  </div>
+
+</div>
+
+<div class="card">
+  <h3>Attendance List</h3>
+  <textarea id="copyList" rows="8"></textarea>
+  <br><br>
+  <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
+</div>
 
 <div class="footer-text">
-  &copy; 2026 Saint Thomas the Apostle Youth Group By Raphael Ide. All rights reserved.
+  © 2026 Saint Thomas the Apostle Youth Group · Raphael Ide
 </div>
 
-<div class="footer-text">
-  Click <a href="https://files.ecatholic.com/20819/documents/2026/1/Top%2050%20Point%20Scorers-1.pdf?t=1769015516000">here</a> for the current point standings
-</div>
-  
 <script>
+/* =========================
+   DATA
+========================= */
 const allAttendees = [
   'Mara Wesolowski','Allie Choate','Bria Santoro','MariaTeresa Arena',
   'Danny Kuyrouz','Amelia Cannato','Carmine Arena','Francesco Arena',
@@ -270,12 +310,22 @@ const defaultCore = [
   "Ali Hamel","Ella Cronin","Alina Falcao","Paxton Roper"
 ];
 
-let presentList = [];  // objects: { name, notes }
+let presentList = [];
 let coreList = [];
-let tables = [];       // global for drag/drop
-let currentMode = 'youth'; // default
+let tables = [];
+let currentMode = 'youth';
 
-function setupAutocomplete(inputId, suggestionsId, selectedId, sourceList, targetArray, isPresent=false) {
+/* =========================
+   AUTOCOMPLETE
+========================= */
+function setupAutocomplete(
+  inputId,
+  suggestionsId,
+  selectedId,
+  sourceList,
+  targetArray,
+  withNotes = false
+) {
   const input = document.getElementById(inputId);
   const suggestions = document.getElementById(suggestionsId);
   const selected = document.getElementById(selectedId);
@@ -289,293 +339,232 @@ function setupAutocomplete(inputId, suggestionsId, selectedId, sourceList, targe
     if (!query) return;
 
     const matches = sourceList.filter(
-      name => name.toLowerCase().includes(query) &&
-      !targetArray.some(obj => obj.name === name || obj === name)
+      name =>
+        name.toLowerCase().includes(query) &&
+        !targetArray.some(o => o.name === name)
     );
 
     matches.forEach((name, index) => {
       const div = document.createElement("div");
       div.className = "suggestion-item";
       div.textContent = name;
-
-      div.onclick = () => selectName(name);
-
       if (index === activeIndex) div.classList.add("active");
 
+      div.onclick = () => selectName(name);
       suggestions.appendChild(div);
     });
   }
 
   function renderSelected() {
     selected.innerHTML = "";
-    targetArray.forEach(obj => {
-      const name = typeof obj === "string" ? obj : obj.name;
 
+    targetArray.forEach(obj => {
       const pill = document.createElement("div");
       pill.className = "selected-pill";
-      pill.innerHTML = `${name} <span onclick="removeName('${name}', '${selectedId}')">×</span>`;
+      pill.innerHTML = `${obj.name} <span>×</span>`;
+
+      pill.querySelector("span").onclick = () => {
+        const name = obj.name;
+
+        // remove from this list
+        targetArray.splice(targetArray.indexOf(obj), 1);
+
+        // 🔑 removing PRESENT also removes CORE
+        if (targetArray === presentList) {
+          coreList = coreList.filter(c => c.name !== name);
+        }
+
+        renderSelected();
+        updateCopyList();
+      };
+
       selected.appendChild(pill);
 
-      if (isPresent) {
+      if (withNotes) {
         const note = document.createElement("textarea");
         note.className = "note-box";
         note.placeholder = "Notes...";
-        note.value = obj.notes || "";
-        note.oninput = () => obj.notes = note.value;
+        note.value = obj.notes;
+        note.oninput = () => (obj.notes = note.value);
         selected.appendChild(note);
       }
     });
-  updateCopyList();
+
+    updateCopyList();
   }
 
   function selectName(name) {
-    if (isPresent) {
+    if (!targetArray.some(o => o.name === name)) {
       targetArray.push({ name, notes: "" });
-    } 
-    else {
-      targetArray.push(name);
     }
+
+    // 🔑 CORE ⊆ PRESENT
+    if (targetArray === coreList) {
+      if (!presentList.some(p => p.name === name)) {
+        presentList.push({ name, notes: "" });
+      }
+    }
+
     input.value = "";
-    activeIndex = -1;
-    renderSelected();
-    updateCopyList();
     suggestions.innerHTML = "";
-    input.focus();
+    activeIndex = -1;
+
+    renderSelected();
   }
 
   input.addEventListener("input", renderSuggestions);
 
   input.addEventListener("keydown", e => {
     const items = suggestions.querySelectorAll(".suggestion-item");
+    if (!items.length) return;
 
     if (e.key === "ArrowDown") {
       activeIndex = (activeIndex + 1) % items.length;
-      renderSuggestions();
-    } else if (e.key === "ArrowUp") {
-      activeIndex = (activeIndex - 1 + items.length) % items.length;
-      renderSuggestions();
-    } else if (e.key === "Enter") {
-      e.preventDefault();
+    }
 
+    if (e.key === "ArrowUp") {
+      activeIndex = (activeIndex - 1 + items.length) % items.length;
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
       if (items[activeIndex]) {
         selectName(items[activeIndex].textContent);
-        return;
-      }
-
-      const typed = input.value.trim();
-      if (typed && !sourceList.includes(typed)) {
-        const confirmAdd = confirm(`"${typed}" is not in the list. Add permanently?`);
-        if (confirmAdd) {
-          sourceList.push(typed);
-          selectName(typed);
-        }
       }
     }
+
+    items.forEach((el, i) =>
+      el.classList.toggle("active", i === activeIndex)
+    );
   });
 
-  return renderSelected;
+  // render defaults immediately
+  renderSelected();
 }
 
+/* =========================
+   COPY LIST
+========================= */
 function updateCopyList() {
-  let names = [];
+  const lines = [];
 
   presentList.forEach(p => {
-    if (coreList.includes(p.name)) {
-      names.push(p.name + " (CORE)");
+    if (coreList.some(c => c.name === p.name)) {
+      lines.push(`${p.name} (CORE)`);
     } else {
-      names.push(p.name);
+      lines.push(p.name);
     }
   });
 
-  coreList.forEach(c => {
-    if (!presentList.some(p => p.name === c)) {
-      names.push(c + " (CORE)");
-    }
-  });
-
-  document.getElementById("copyList").value = names.join("\n");
+  document.getElementById("copyList").value = lines.join("\n");
 }
 
-function removeName(name, selectedId) {
-  if (selectedId === "presentSelected") {
-    presentList = presentList.filter(obj => obj.name !== name);
-    renderPresent();
-    updateCopyList();
-  } else {
-    coreList = coreList.filter(n => n !== name);
-    renderCore();
-    updateCopyList();
-  }
-}
-
-const renderPresent = setupAutocomplete(
-  "presentInput", "presentSuggestions", "presentSelected",
-  allAttendees, presentList, true
-);
-
-const renderCore = setupAutocomplete(
-  "coreInput", "coreSuggestions", "coreSelected",
-  defaultCore, coreList
-);
-
+/* =========================
+   CSV EXPORT
+========================= */
 function exportToCSV() {
-  if (presentList.length === 0) {
-    alert("No attendees selected.");
-    return;
-  }
-
-  // Add core members who are also present
-  let corePresent = coreList
-    .filter(name => presentList.some(p => p.name === name))
-    .map(name => ({ name, notes: "CORE MEMBER" }));
-
-  let combined = [...presentList, ...corePresent];
-
-  let csv = "data:text/csv;charset=utf-8,Name,Notes\n";
-  combined.forEach(obj => {
-    csv += `"${obj.name}","${obj.notes || ""}"\n`;
-  });
-
-  const link = document.createElement("a");
-  link.href = encodeURI(csv);
-  link.download = "youth_group_attendees.csv";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  if(!presentList.length){alert("No attendees selected."); return;}
+  const combined = [...presentList];
+  let csv="Name,Notes\n";
+  combined.forEach(obj=>csv+=`"${obj.name}","${obj.notes||""}"\n`);
+  const link=document.createElement("a");
+  link.href="data:text/csv;charset=utf-8,"+encodeURI(csv);
+  link.download="youth_group_attendees.csv";
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
+/* =========================
+   TABLES
+========================= */
 function generateTables() {
-  const num = parseInt(document.getElementById("numTables").value);
-  const togetherInput = document.getElementById("togetherGroups").value
-    .split(/\n+/).filter(x => x.trim());
+  const num=parseInt(document.getElementById("numTables").value);
+  if(coreList.length<num){alert("You need at least as many core members as tables."); return;}
+  tables=Array.from({length:num},()=>[]);
 
-  if (coreList.length < num) {
-    alert("You need at least as many core members as tables.");
-    return;
-  }
+  function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
 
-  tables = Array.from({ length: num }, () => []);
-
-  function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-  }
-
-  const shuffledCore = shuffle([...coreList]);
+  const shuffledCore = shuffle(coreList.map(c => c.name));
   for (let i = 0; i < num; i++) tables[i].push(shuffledCore[i]);
 
   let remaining = presentList
-    .map(obj => obj.name)
-    .filter(x => !coreList.includes(x));
+  .map(p => p.name)
+  .filter(n => !coreList.some(c => c.name === n));
 
-  let togetherGroups = togetherInput.map(line =>
-    line.split(",").map(p => p.trim())
-  );
+  const togetherGroups=document.getElementById("togetherGroups").value.split(/\n+/).map(line=>line.split(",").map(p=>p.trim()));
 
-  for (const group of togetherGroups) {
-    const presentGroup = group.filter(p =>
-      presentList.some(obj => obj.name === p)
+  togetherGroups.forEach(group=>{
+    const presentGroup=group.filter(p=>presentList.some(obj=>obj.name===p));
+    if(!presentGroup.length) return;
+    const coreInGroup = presentGroup.filter(p =>
+      coreList.some(c => c.name === p)
     );
-
-    if (presentGroup.length === 0) continue;
-
-    const coreInGroup = presentGroup.filter(p => coreList.includes(p));
-
-    if (coreInGroup.length > 0) {
-      const anchor = coreInGroup[0];
-
-      let tableIndex = tables.findIndex(t => t.includes(anchor));
-
-      presentGroup.forEach(p => {
-        if (!tables[tableIndex].includes(p)) tables[tableIndex].push(p);
-      });
-
-      remaining = remaining.filter(p => !presentGroup.includes(p));
+    if(coreInGroup.length){
+      const anchor=coreInGroup[0];
+      let tableIndex=tables.findIndex(t=>t.includes(anchor));
+      presentGroup.forEach(p=>{if(!tables[tableIndex].includes(p)) tables[tableIndex].push(p);});
+      remaining=remaining.filter(p=>!presentGroup.includes(p));
     } else {
-      let tableIndex = tables.reduce(
-        (min, t, idx, arr) => t.length < arr[min].length ? idx : min, 0
-      );
-
+      let tableIndex=tables.reduce((min,t,idx,arr)=>t.length<arr[min].length?idx:min,0);
       tables[tableIndex].push(...presentGroup);
-      remaining = remaining.filter(p => !presentGroup.includes(p));
+      remaining=remaining.filter(p=>!presentGroup.includes(p));
     }
-  }
+  });
 
-  remaining = shuffle(remaining);
-  let t = 0;
-  for (const person of remaining) {
-    tables[t].push(person);
-    t = (t + 1) % num;
-  }
-
+  remaining=shuffle(remaining);
+  let t=0;
+  remaining.forEach(p=>{tables[t].push(p); t=(t+1)%num;});
   renderTables();
 }
 
 function renderTables() {
-  const out = document.getElementById("output");
-  out.innerHTML = "";
-
-  tables.forEach((tbl, i) => {
-    const div = document.createElement("div");
-    div.className = "table";
-
-    let html = `<h3>Table ${i + 1}</h3><ul ondragover="allowDrop(event)" ondrop="drop(event, ${i})">`;
-
-    tbl.forEach(p => {
-      html += `<li draggable="true" ondragstart="drag(event)" data-name="${p}">${p}</li>`;
-    });
-
-    html += "</ul>";
-    div.innerHTML = html;
-    out.appendChild(div);
+  const out=document.getElementById("output");
+  out.innerHTML="";
+  tables.forEach((tbl,i)=>{
+    const div=document.createElement("div"); div.className="table";
+    let html=`<h3>Table ${i+1}</h3><ul ondragover="allowDrop(event)" ondrop="drop(event,${i})">`;
+    tbl.forEach(p=>html+=`<li draggable="true" ondragstart="drag(event)" data-name="${p}">${p}</li>`);
+    html+="</ul>";
+    div.innerHTML=html; out.appendChild(div);
   });
 }
 
-function drag(ev) {
-  ev.dataTransfer.setData("text", ev.target.dataset.name);
-}
-
-function allowDrop(ev) {
+function drag(ev){ev.dataTransfer.setData("text",ev.target.dataset.name);}
+function allowDrop(ev){ev.preventDefault();}
+function drop(ev,tableIndex){
   ev.preventDefault();
+  const name=ev.dataTransfer.getData("text");
+  tables.forEach(t=>{const idx=t.indexOf(name); if(idx!==-1) t.splice(idx,1);});
+  tables[tableIndex].push(name); renderTables();
 }
 
-function drop(ev, tableIndex) {
-  ev.preventDefault();
-  const name = ev.dataTransfer.getData("text");
-
-  tables.forEach(t => {
-    const idx = t.indexOf(name);
-    if (idx !== -1) t.splice(idx, 1);
-  });
-
-  tables[tableIndex].push(name);
-
-  renderTables();
+/* =========================
+   MODE
+========================= */
+function setMode(mode){
+  currentMode=mode;
+  document.getElementById("rosaryBtn").classList.toggle("active-mode",mode==="rosary");
+  document.getElementById("youthBtn").classList.toggle("active-mode",mode==="youth");
+  document.getElementById("youthFeatures").classList.toggle("hidden",mode==="rosary");
 }
 
-/* MODE SWITCHING */
-function setMode(mode) {
-  currentMode = mode;
+setupAutocomplete(
+  "presentInput",
+  "presentSuggestions",
+  "presentSelected",
+  allAttendees,
+  presentList,
+  true
+);
 
-  const youthFeatures = document.getElementById("youthFeatures");
-  const rosaryBtn = document.getElementById("rosaryModeBtn");
-  const youthBtn = document.getElementById("youthModeBtn");
+setupAutocomplete(
+  "coreInput",
+  "coreSuggestions",
+  "coreSelected",
+  allAttendees,
+  coreList,
+  true
+);
 
-  if (mode === 'rosary') {
-    youthFeatures.classList.add("hidden");
-    rosaryBtn.classList.add("active-mode");
-    youthBtn.classList.remove("active-mode");
-  } else {
-    youthFeatures.classList.remove("hidden");
-    youthBtn.classList.add("active-mode");
-    rosaryBtn.classList.remove("active-mode");
-  }
-}
-setMode('youth');
 </script>
-
 </body>
 </html>
