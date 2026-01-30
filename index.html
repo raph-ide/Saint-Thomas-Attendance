@@ -95,6 +95,79 @@ button.secondary {
 }
 
 /* =========================
+   DARK MODE
+========================= */
+body.dark-mode {
+  background: #1c1c1e;
+  color: #f2f2f7;
+}
+
+body.dark-mode .card {
+  background: #2c2c2e;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+}
+
+body.dark-mode input,
+body.dark-mode textarea {
+  background: #3a3a3c;
+  color: #f2f2f7;
+  border: 1px solid #5a5a5f;
+}
+
+body.dark-mode input:focus,
+body.dark-mode textarea:focus {
+  border-color: #0a84ff;
+}
+
+body.dark-mode button {
+  background-color: #0a84ff;
+  box-shadow: 0 6px 14px rgba(10,132,255,0.5);
+}
+
+body.dark-mode button.secondary {
+  background: #28a745;
+  box-shadow: 0 6px 14px rgba(40,167,69,0.5);
+}
+
+body.dark-mode .suggestions {
+  background: #2c2c2e;
+  color: #f2f2f7;
+}
+
+body.dark-mode .suggestion-item:hover,
+body.dark-mode .suggestion-item.active {
+  background: #444448;
+}
+
+body.dark-mode .selected-pill {
+  background: #3a3a3c;
+  border: 1px solid #5a5a5f;
+}
+
+body.dark-mode .note-box {
+  background: #3a3a3c;
+  color: #f2f2f7;
+  border: 1px solid #5a5a5f;
+}
+
+body.dark-mode .mode-buttons {
+  background: #3a3a3c;
+}
+
+body.dark-mode .mode-button {
+  color: #f2f2f7;
+}
+
+body.dark-mode .mode-button.active-mode {
+  background: #0a84ff;
+  color: #fff;
+}
+
+body.dark-mode .footer-text {
+  color: #8e8e93;
+}
+
+/* =========================
    MODE TOGGLE
 ========================= */
 .mode-buttons {
@@ -225,6 +298,8 @@ li {
   <button type="button" id="youthBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group</button>
 </div>
 
+<button type="button" id="darkModeBtn" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+
 <div class="card">
   <h3>Present Attendees</h3>
   <div class="autocomplete-box">
@@ -268,13 +343,9 @@ li {
 </div>
 
 <div class="footer-text">
-  © 2026 Saint Thomas the Apostle Youth Group · By Raphael Ide
+  © 2026 Saint Thomas the Apostle Youth Group · Raphael Ide
 </div>
 
-<div class="footer-text">
-   Click <a href="https://files.ecatholic.com/20819/documents/2026/1/Top%2050%20Point%20Scorers-1.pdf?t=1769015516000">here</a> to view the current point standings!!
-</div>
-   
 <script>
 /* =========================
    DATA
@@ -582,6 +653,10 @@ setupAutocomplete(
   coreList,
   true
 );
+
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
+}
 
 </script>
 </body>
