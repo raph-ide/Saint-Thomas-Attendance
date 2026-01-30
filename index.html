@@ -98,71 +98,76 @@ button.secondary {
    DARK MODE
 ========================= */
 body.dark-mode {
-  background: #1c1c1e;
+  background: linear-gradient(#1c1c1e, #000);
+  color: #f2f2f7; /* 🔑 makes MOST text white */
+}
+
+/* Headings */
+body.dark-mode h1,
+body.dark-mode h3 {
   color: #f2f2f7;
 }
 
+/* Cards */
 body.dark-mode .card {
   background: #2c2c2e;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
 }
 
+/* Inputs & textareas */
 body.dark-mode input,
 body.dark-mode textarea {
-  background: #3a3a3c;
+  background: #1c1c1e;
   color: #f2f2f7;
-  border: 1px solid #5a5a5f;
+  border-color: #3a3a3c;
 }
 
-body.dark-mode input:focus,
-body.dark-mode textarea:focus {
-  border-color: #0a84ff;
-}
-
+/* Buttons */
 body.dark-mode button {
   background-color: #0a84ff;
-  box-shadow: 0 6px 14px rgba(10,132,255,0.5);
 }
 
+/* Secondary button */
 body.dark-mode button.secondary {
-  background: #28a745;
-  box-shadow: 0 6px 14px rgba(40,167,69,0.5);
+  background-color: #30d158;
 }
 
+/* Autocomplete suggestions */
 body.dark-mode .suggestions {
   background: #2c2c2e;
+}
+
+body.dark-mode .suggestion-item {
   color: #f2f2f7;
 }
 
 body.dark-mode .suggestion-item:hover,
 body.dark-mode .suggestion-item.active {
-  background: #444448;
+  background: #3a3a3c;
 }
 
+/* Selected pills */
 body.dark-mode .selected-pill {
   background: #3a3a3c;
-  border: 1px solid #5a5a5f;
+  border-color: #48484a;
 }
 
-body.dark-mode .note-box {
-  background: #3a3a3c;
+body.dark-mode .selected-pill span {
+  color: #ff453a;
+}
+
+/* Tables */
+body.dark-mode .table {
+  background: #2c2c2e;
+}
+
+body.dark-mode li {
+  background: #1c1c1e;
   color: #f2f2f7;
-  border: 1px solid #5a5a5f;
+  border-color: #3a3a3c;
 }
 
-body.dark-mode .mode-buttons {
-  background: #3a3a3c;
-}
-
-body.dark-mode .mode-button {
-  color: #f2f2f7;
-}
-
-body.dark-mode .mode-button.active-mode {
-  background: #0a84ff;
-  color: #fff;
-}
-
+/* Footer */
 body.dark-mode .footer-text {
   color: #8e8e93;
 }
@@ -286,6 +291,16 @@ li {
   color: #6e6e73;
   text-align: center;
 }
+
+.live-counter {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #3a3a3c;
+  display: flex;
+  gap: 16px;
+  font-weight: 600;
+}
+
 </style>
 </head>
 
@@ -337,6 +352,10 @@ li {
 
 <div class="card">
   <h3>Attendance List</h3>
+
+  <!-- LIVE COUNTER -->
+  <div id="liveCounter" class="live-counter"></div>
+
   <textarea id="copyList" rows="8"></textarea>
   <br><br>
   <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
@@ -546,6 +565,19 @@ function updateCopyList() {
   });
 
   document.getElementById("copyList").value = lines.join("\n");
+  updateLiveCounter();
+}
+
+/* =========================
+   LIVE COUNTER
+========================= */
+function updateLiveCounter() {
+  const presentCount = presentList.length;
+  const coreCount = coreList.length;
+  const tableCount = tables.length;
+
+  const counter = document.getElementById("liveCounter");
+  counter.textContent = `Present: ${presentCount}  |  Core: ${coreCount}  |  Tables: ${tableCount}`;
 }
 
 /* =========================
@@ -597,6 +629,7 @@ function generateTables() {
       tables[tableIndex].push(...presentGroup);
       remaining=remaining.filter(p=>!presentGroup.includes(p));
     }
+  updateLiveCounter();  
   });
 
   remaining=shuffle(remaining);
