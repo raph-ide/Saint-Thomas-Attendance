@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -366,7 +367,8 @@ li {
 </div>
 
 <div class="footer-text">
-  Click <a href="https://files.ecatholic.com/20819/documents/2026/1/Top%2050%20Point%20Scorers-1.pdf?t=1769015516000">here</a> to view the current point standings!!
+   Click <a href=https://files.ecatholic.com/20819/documents/2026/1/Top%2050%20Point%20Scorers-1.pdf?t=1769015516000>here</a>
+</div>
 
 <script>
 /* =========================
@@ -425,52 +427,6 @@ let presentList = [];
 let coreList = [];
 let tables = [];
 let currentMode = 'youth';
-let historyStack = [];
-
-/* =========================
-   HISTORY & SESSION
-========================= */
-function pushHistory() {
-  historyStack.push(JSON.stringify({
-    presentList,
-    coreList,
-    tables
-  }));
-  if (historyStack.length > 50) historyStack.shift();
-}
-
-function undoLastAction() {
-  if (!historyStack.length) return;
-
-  const prev = JSON.parse(historyStack.pop());
-  presentList = prev.presentList;
-  coreList = prev.coreList;
-  tables = prev.tables;
-
-  renderTables();
-  updateCopyList();
-}
-
-function saveSession() {
-  localStorage.setItem("attendanceSession", JSON.stringify({
-    presentList,
-    coreList,
-    tables
-  }));
-}
-
-function loadSession() {
-  const saved = localStorage.getItem("attendanceSession");
-  if (!saved) return;
-
-  const data = JSON.parse(saved);
-  presentList = data.presentList || [];
-  coreList = data.coreList || [];
-  tables = data.tables || [];
-
-  renderTables();
-  updateCopyList();
-}
 
 /* =========================
    AUTOCOMPLETE
@@ -521,7 +477,6 @@ function setupAutocomplete(
       pill.innerHTML = `${obj.name} <span>×</span>`;
 
       pill.querySelector("span").onclick = () => {
-        pushHistory();
         const name = obj.name;
 
         // remove from this list
@@ -534,7 +489,6 @@ function setupAutocomplete(
 
         renderSelected();
         updateCopyList();
-        saveSession();
       };
 
       selected.appendChild(pill);
@@ -553,7 +507,6 @@ function setupAutocomplete(
   }
 
   function selectName(name) {
-    pushHistory();
     if (!targetArray.some(o => o.name === name)) {
       targetArray.push({ name, notes: "" });
     }
@@ -570,7 +523,6 @@ function setupAutocomplete(
     activeIndex = -1;
 
     renderSelected();
-    saveSession();
   }
 
   input.addEventListener("input", renderSuggestions);
@@ -651,7 +603,6 @@ function exportToCSV() {
    TABLES
 ========================= */
 function generateTables() {
-  pushHistory();
   const num=parseInt(document.getElementById("numTables").value);
   if(coreList.length<num){alert("You need at least as many core members as tables."); return;}
   tables=Array.from({length:num},()=>[]);
@@ -690,7 +641,6 @@ function generateTables() {
   let t=0;
   remaining.forEach(p=>{tables[t].push(p); t=(t+1)%num;});
   renderTables();
-  saveSession();
 }
 
 function renderTables() {
@@ -708,12 +658,10 @@ function renderTables() {
 function drag(ev){ev.dataTransfer.setData("text",ev.target.dataset.name);}
 function allowDrop(ev){ev.preventDefault();}
 function drop(ev,tableIndex){
-  pushHistory();
   ev.preventDefault();
   const name=ev.dataTransfer.getData("text");
   tables.forEach(t=>{const idx=t.indexOf(name); if(idx!==-1) t.splice(idx,1);});
   tables[tableIndex].push(name); renderTables();
-  saveSession();
 }
 
 /* =========================
@@ -747,14 +695,6 @@ setupAutocomplete(
 function toggleDarkMode() {
   document.body.classList.toggle("dark-mode");
 }
-
-window.onload = loadSession;
-document.addEventListener("keydown", e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-    e.preventDefault();
-    undoLastAction();
-  }
-});
 
 </script>
 </body>
