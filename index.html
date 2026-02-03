@@ -250,6 +250,51 @@ body.dark-mode .footer-text {
   padding: 8px;
   border-radius: 10px;
   border: 1px solid #d1d1d6;
+  resize: vertical;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
+}
+
+.note-box.collapsed {
+  max-height: 0;
+  opacity: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.note-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 4px 0 10px;
+  border-radius: 50%;
+  border: 1px solid #d1d1d6;
+  background: #f2f2f7;
+  color: #3a3a3c;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: none;
+  padding: 0;
+}
+
+.note-toggle:hover {
+  background: #e5e5ea;
+  transform: none;
+  box-shadow: none;
+}
+
+body.dark-mode .note-toggle {
+  background: #3a3a3c;
+  border-color: #48484a;
+  color: #f2f2f7;
+}
+
+body.dark-mode .note-toggle:hover {
+  background: #48484a;
 }
 
 /* =========================
@@ -307,10 +352,10 @@ li {
 
 <body>
 
-<h1>Saint Thomas Youth Group Attendance and Table Maker</h1>
+<h1>Saint Thomas Youth Group Attendance</h1>
 
 <div class="mode-buttons">
-  <button type="button" id="rosaryBtn" class="mode-button" onclick="setMode('rosary')">Rosary / Holy Hour / Service</button>
+  <button type="button" id="rosaryBtn" class="mode-button" onclick="setMode('rosary')">Rosary / Holy Hour</button>
   <button type="button" id="youthBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group</button>
 </div>
 
@@ -363,11 +408,7 @@ li {
 </div>
 
 <div class="footer-text">
-  © 2026 Saint Thomas the Apostle Youth Group · By Raphael Ide
-</div>
-
-<div class="footer-text">
-   Click <a href=https://files.ecatholic.com/20819/documents/2026/1/Top%2050%20Point%20Scorers-1.pdf?t=1769015516000>here</a> to view current point standings!!
+  © 2026 Saint Thomas the Apostle Youth Group · Raphael Ide
 </div>
 
 <script>
@@ -420,8 +461,7 @@ const allAttendees = [
 const defaultCore = [
   "Raphael Ide","Gigi Arico","Maria Elena Franchi","Natalia McLaughlin",
   "Cece McLaughlin","Genevieve Nohrden","Catalina Perdomo","Bella Gonet",
-  "Ali Hamel","Ella Cronin","Alina Falcao","Paxton Roper","Anna Kearney",
-   "Graham Evans"
+  "Ali Hamel","Ella Cronin","Alina Falcao","Paxton Roper"
 ];
 
 let presentList = [];
@@ -495,11 +535,35 @@ function setupAutocomplete(
       selected.appendChild(pill);
 
       if (withNotes) {
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "note-toggle";
+        toggle.setAttribute("aria-label", "Toggle notes");
+        toggle.textContent = "▶";
+
         const note = document.createElement("textarea");
-        note.className = "note-box";
+        note.className = "note-box collapsed";
         note.placeholder = "Notes...";
         note.value = obj.notes;
-        note.oninput = () => (obj.notes = note.value);
+        const setExpanded = expanded => {
+          note.classList.toggle("collapsed", !expanded);
+          toggle.textContent = expanded ? "▼" : "▶";
+        };
+
+        toggle.addEventListener("click", () => {
+          const isCollapsed = note.classList.contains("collapsed");
+          setExpanded(isCollapsed);
+          if (isCollapsed) {
+            note.focus();
+          }
+        });
+
+        note.addEventListener("input", () => {
+          obj.notes = note.value;
+        });
+
+        setExpanded(false);
+        selected.appendChild(toggle);
         selected.appendChild(note);
       }
     });
