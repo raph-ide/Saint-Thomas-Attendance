@@ -13,12 +13,14 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: linear-gradient(#f5f5f7, #ffffff);
+  background: radial-gradient(circle at top, rgba(122, 180, 255, 0.25), transparent 55%),
+    linear-gradient(#f5f5f7, #ffffff);
   color: #1c1c1e;
   margin: 0;
   padding: 24px;
   max-width: 1100px;
   margin-inline: auto;
+  line-height: 1.5;
 }
 
 /* =========================
@@ -27,7 +29,7 @@ body {
 h1 {
   font-size: 32px;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
 h1 span {
@@ -41,8 +43,21 @@ h1 span {
 h3 {
   font-size: 16px;
   font-weight: 600;
-  margin: 20px 0 8px;
+  margin: 0 0 12px;
   color: #3a3a3c;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.header-subtitle {
+  font-size: 15px;
+  color: #5a5a5f;
+  margin: 0;
 }
 
 /* =========================
@@ -54,6 +69,21 @@ h3 {
   padding: 20px;
   margin-bottom: 24px;
   box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.helper-text {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #6e6e73;
 }
 
 /* =========================
@@ -107,6 +137,14 @@ button.secondary {
   box-shadow: 0 6px 14px rgba(40,167,69,0.25);
 }
 
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a5a5f;
+}
+
 /* =========================
    DARK MODE
 ========================= */
@@ -125,6 +163,7 @@ body.dark-mode h3 {
 body.dark-mode .card {
   background: #2c2c2e;
   box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Inputs & textareas */
@@ -189,13 +228,19 @@ body.dark-mode h1 span {
   color: #8e8e93;
 }
 
+body.dark-mode .header-subtitle,
+body.dark-mode .helper-text,
+body.dark-mode .field-label {
+  color: #b0b0b5;
+}
+
 /* =========================
    MODE TOGGLE
 ========================= */
 .mode-buttons {
   display: flex;
   gap: 6px;
-  background: #e5e5ea;
+  background: #f2f2f7;
   padding: 6px;
   border-radius: 999px;
   margin-bottom: 24px;
@@ -208,12 +253,18 @@ body.dark-mode h1 span {
   justify-content: space-between;
   flex-wrap: wrap;
   margin-bottom: 24px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.06);
 }
 
 .toggle-button {
   background: white;
   color: #007aff;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .toggle-button.dark-on {
@@ -249,6 +300,7 @@ body.dark-mode h1 span {
   overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0,0,0,0.12);
   z-index: 20;
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
 .suggestion-item {
@@ -258,7 +310,7 @@ body.dark-mode h1 span {
 
 .suggestion-item:hover,
 .suggestion-item.active {
-  background: #f2f2f7;
+  background: #e9f2ff;
 }
 
 /* =========================
@@ -348,6 +400,7 @@ body.dark-mode .note-toggle:hover {
   border-radius: 16px;
   padding: 16px;
   box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .table h3 {
@@ -363,6 +416,7 @@ li {
   border: 1px solid #e5e5ea;
   border-radius: 8px;
   cursor: grab;
+  background: #fff;
 }
 
 /* ========================= */
@@ -397,12 +451,28 @@ body.dark-mode .live-counter {
   color: #d1d1d6;
 }
 
+body.dark-mode .toolbar {
+  background: rgba(44, 44, 46, 0.9);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+body.dark-mode .mode-buttons {
+  background: #3a3a3c;
+}
+
+body.dark-mode .suggestion-item:hover,
+body.dark-mode .suggestion-item.active {
+  background: #2f4b76;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Saint Thomas Youth Group Attendance <span>Track attendance, tables, and notes</span></h1>
+<header class="page-header">
+  <h1>Saint Thomas Youth Group Attendance <span>Track attendance, tables, and notes</span></h1>
+</header>
 
 <div class="toolbar">
   <div class="mode-buttons" role="group" aria-label="Select attendance mode">
@@ -414,9 +484,11 @@ body.dark-mode .live-counter {
 </div>
 
 <div class="card">
-  <h3>Present Attendees</h3>
+  <div class="card-header">
+    <h3>Present Attendees</h3>
+  </div>
   <div class="autocomplete-box">
-    <label class="visually-hidden" for="presentInput">Present attendees</label>
+    <label class="field-label" for="presentInput">Add present attendee</label>
     <input id="presentInput" placeholder="Type a name..." autocomplete="off" aria-autocomplete="list" aria-controls="presentSuggestions">
     <div id="presentSuggestions" class="suggestions" role="listbox"></div>
   </div>
@@ -426,9 +498,11 @@ body.dark-mode .live-counter {
 <div id="youthFeatures">
 
   <div class="card">
-    <h3>Core Members</h3>
+    <div class="card-header">
+      <h3>Core Members</h3>
+    </div>
     <div class="autocomplete-box">
-      <label class="visually-hidden" for="coreInput">Core members</label>
+      <label class="field-label" for="coreInput">Add core member</label>
       <input id="coreInput" placeholder="Type a core member..." autocomplete="off" aria-autocomplete="list" aria-controls="coreSuggestions">
       <div id="coreSuggestions" class="suggestions" role="listbox"></div>
     </div>
@@ -436,12 +510,14 @@ body.dark-mode .live-counter {
   </div>
 
   <div class="card">
-    <h3>Groups That Must Sit Together</h3>
-    <label class="visually-hidden" for="togetherGroups">Groups that must sit together</label>
+    <div class="card-header">
+      <h3>Groups That Must Sit Together</h3>
+    </div>
+    <label class="field-label" for="togetherGroups">Group list</label>
     <textarea id="togetherGroups" placeholder="One group per line: Name, Name, Name"></textarea>
 
     <h3>Number of Tables</h3>
-    <label class="visually-hidden" for="numTables">Number of tables</label>
+    <label class="field-label" for="numTables">Total tables</label>
     <input type="number" id="numTables" min="1" value="8">
 
     <br><br>
@@ -453,13 +529,15 @@ body.dark-mode .live-counter {
 </div>
 
 <div class="card">
-  <h3>Attendance List</h3>
+  <div class="card-header">
+    <h3>Attendance List</h3>
+  </div>
 
   <!-- LIVE COUNTER -->
   <div id="liveCounter" class="live-counter" aria-live="polite"></div>
 
-  <label class="visually-hidden" for="copyList">Attendance list</label>
-  <textarea id="copyList" rows="8" placeholder="Selected attendees will appear here..."></textarea>
+  <label class="field-label" for="copyList">Attendance output</label>
+  <textarea id="copyList" rows="8" placeholder="Marked attendees will appear here..."></textarea>
   <br><br>
   <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
 </div>
