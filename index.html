@@ -375,6 +375,38 @@ body.dark-mode .field-label {
   box-shadow: none;
 }
 
+.together-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.together-buttons button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f2f2f7;
+  color: #3a3a3c;
+  border: 1px solid #d1d1d6;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.together-buttons button:hover {
+  transform: none;
+  background: #e9f2ff;
+}
+
+body.dark-mode .together-buttons button {
+  background: #3a3a3c;
+  border-color: #48484a;
+  color: #f2f2f7;
+}
+
+body.dark-mode .together-buttons button:hover {
+  background: #2f4b76;
+}
+
 body.dark-mode .note-toggle {
   background: #3a3a3c;
   border-color: #48484a;
@@ -515,6 +547,8 @@ body.dark-mode .suggestion-item.active {
     </div>
     <label class="field-label" for="togetherGroups">Group list</label>
     <textarea id="togetherGroups" placeholder="One group per line: Name, Name, Name"></textarea>
+    <p class="helper-text">Tap a present name to add it to the current group line.</p>
+    <div id="togetherNameButtons" class="together-buttons" aria-live="polite"></div>
 
     <h3>Number of Tables</h3>
     <label class="field-label" for="numTables">Total tables</label>
@@ -607,6 +641,49 @@ let presentList = [];
 let coreList = [];
 let tables = [];
 let currentMode = 'youth';
+
+function normalizeName(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+function appendNameToTogetherGroup(name) {
+  const textarea = document.getElementById("togetherGroups");
+  if (!textarea) return;
+
+  const current = textarea.value;
+  if (!current.trim()) {
+    textarea.value = name;
+  } else if (current.endsWith("\n")) {
+    textarea.value = `${current}${name}`;
+  } else {
+    textarea.value = `${current}, ${name}`;
+  }
+  textarea.focus();
+}
+
+function updateTogetherButtons() {
+  const container = document.getElementById("togetherNameButtons");
+  if (!container) return;
+
+  container.innerHTML = "";
+  const names = presentList.map(p => p.name).sort((a, b) => a.localeCompare(b));
+
+  if (!names.length) {
+    const empty = document.createElement("span");
+    empty.className = "helper-text";
+    empty.textContent = "Mark attendees present to see name buttons here.";
+    container.appendChild(empty);
+    return;
+  }
+
+  names.forEach(name => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = name;
+    button.addEventListener("click", () => appendNameToTogetherGroup(name));
+    container.appendChild(button);
+  });
+}
 
 /* =========================
    AUTOCOMPLETE
@@ -716,6 +793,7 @@ function setupAutocomplete(
     });
 
     updateCopyList();
+    updateTogetherButtons();
   }
 
   function selectName(name) {
@@ -738,6 +816,28 @@ function setupAutocomplete(
     renderSelected();
   }
 
+  function maybeAddNewName(rawName) {
+    const name = normalizeName(rawName);
+    if (!name) return false;
+
+    const existing = sourceList.find(
+      entry => entry.toLowerCase() === name.toLowerCase()
+    );
+
+    if (existing) {
+      selectName(existing);
+      return true;
+    }
+
+    if (window.confirm(`"${name}" is not in the list yet. Add this person?`)) {
+      sourceList.push(name);
+      selectName(name);
+      return true;
+    }
+
+    return false;
+  }
+
   input.addEventListener("input", renderSuggestions);
 
   input.addEventListener("blur", () => {
@@ -757,6 +857,24 @@ function setupAutocomplete(
       return;
     }
 
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (items[activeIndex]) {
+        selectName(items[activeIndex].textContent);
+        return;
+      }
+
+      if (items.length) {
+        selectName(items[0].textContent);
+        return;
+      }
+
+      if (maybeAddNewName(input.value)) {
+        renderSuggestions();
+        return;
+      }
+    }
+
     if (!items.length) return;
 
     if (e.key === "ArrowDown") {
@@ -765,13 +883,6 @@ function setupAutocomplete(
 
     if (e.key === "ArrowUp") {
       activeIndex = (activeIndex - 1 + items.length) % items.length;
-    }
-
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (items[activeIndex]) {
-        selectName(items[activeIndex].textContent);
-      }
     }
 
     items.forEach((el, i) =>
