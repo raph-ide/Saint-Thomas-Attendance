@@ -933,6 +933,11 @@ function updateLiveCounter() {
 ========================= */
 function exportToCSV() {
   if(!presentList.length){alert("No attendees selected."); return;}
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const year = String(now.getFullYear()).slice(-2);
+  const filename = `youth_group_attendees_${month}_${day}_${year}.csv`;
   const combined = [...presentList];
   const escapeField = value => `"${String(value).replace(/"/g, '""')}"`;
   let csv="Name,Notes\n";
@@ -940,7 +945,7 @@ function exportToCSV() {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link=document.createElement("a");
   link.href=URL.createObjectURL(blob);
-  link.download="youth_group_attendees.csv";
+  link.download=filename;
   document.body.appendChild(link); link.click(); document.body.removeChild(link);
   URL.revokeObjectURL(link.href);
 }
@@ -1050,3 +1055,4 @@ function toggleDarkMode() {
 </script>
 </body>
 </html>
+
