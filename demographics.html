@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saint Thomas Attendee Demographics</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, rgba(122, 180, 255, 0.25), transparent 55%), linear-gradient(#f5f5f7, #ffffff);
+  color: #1c1c1e;
+  margin: 0;
+  padding: 24px;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+h1 { font-size: 32px; margin: 0 0 6px; }
+h1 span { display: block; font-size: 14px; color: #6e6e73; margin-top: 6px; font-weight: 500; }
+.card { background: white; border-radius: 16px; padding: 20px; margin: 0 0 20px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,.05); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: 12px; }
+label { display:block; font-size: 13px; font-weight: 600; color: #5a5a5f; margin-bottom: 6px; }
+input, select, textarea { width:100%; padding:11px; border-radius: 10px; border:1px solid #d1d1d6; font: inherit; }
+button { margin-top: 10px; padding: 11px 14px; border:none; border-radius: 12px; background:#007aff; color:white; font-weight:600; cursor:pointer; }
+button.secondary { background:#34c759; }
+button.ghost { background:#f2f2f7; color:#1c1c1e; border: 1px solid #d1d1d6; }
+.toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom: 20px; }
+.search { max-width: 360px; }
+table { width:100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 10px; border-bottom: 1px solid #ececf0; vertical-align: top; text-align:left; }
+th { font-size: 12px; text-transform: uppercase; color:#6e6e73; letter-spacing: .04em; }
+.small { font-size: 13px; color:#6e6e73; margin: 0; }
+.tags { display:flex; flex-wrap:wrap; gap:6px; }
+.tag { background:#f2f2f7; border:1px solid #d1d1d6; padding:2px 8px; border-radius:999px; font-size:12px; }
+body.dark-mode { background: linear-gradient(#1c1c1e,#000); color:#f2f2f7; }
+body.dark-mode .card { background:#2c2c2e; border-color: rgba(255,255,255,.1); }
+body.dark-mode label, body.dark-mode .small, body.dark-mode th { color:#b0b0b5; }
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background:#1c1c1e; color:#f2f2f7; border-color:#3a3a3c; }
+body.dark-mode button.ghost { background:#3a3a3c; color:#f2f2f7; border-color:#48484a; }
+body.dark-mode .tag { background:#3a3a3c; border-color:#48484a; }
+</style>
+</head>
+<body>
+  <header class="toolbar">
+    <div>
+      <h1>Attendee Demographics <span>Attendance count, table history, and notes by person</span></h1>
+      <p class="small">Data is stored in your browser (localStorage). Add one record per attendee per event date.</p>
+    </div>
+    <button type="button" id="darkModeBtn" class="ghost" onclick="toggleDarkMode()">Turn on Dark Mode</button>
+  </header>
+
+  <section class="card">
+    <h3>Log attendance record</h3>
+    <div class="grid">
+      <div>
+        <label for="nameSelect">Attendee</label>
+        <select id="nameSelect"></select>
+      </div>
+      <div>
+        <label for="eventDate">Event date</label>
+        <input type="date" id="eventDate" />
+      </div>
+      <div>
+        <label for="tableNumber">Table</label>
+        <input type="text" id="tableNumber" placeholder="Example: 3" />
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label for="noteInput">Notes</label>
+      <textarea id="noteInput" rows="2" placeholder="Anything important about this attendee..."></textarea>
+    </div>
+    <button type="button" onclick="addRecord()">Add Record</button>
+    <button type="button" class="secondary" onclick="downloadCSV()">Download Demographics CSV</button>
+    <button type="button" class="ghost" onclick="clearRecords()">Clear All Records</button>
+  </section>
+
+  <section class="card">
+    <div class="toolbar" style="margin-bottom:10px;">
+      <h3 style="margin:0;">Demographics Summary</h3>
+      <input id="searchInput" class="search" placeholder="Search attendee name..." oninput="renderTable()" />
+    </div>
+    <div id="stats" class="small"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Times Attended</th>
+          <th>Tables Sat At</th>
+          <th>Most Recent Notes</th>
+        </tr>
+      </thead>
+      <tbody id="summaryBody"></tbody>
+    </table>
+  </section>
+
+<script>
+const allAttendees = [
+  'Mara Wesolowski','Allie Choate','Bria Santoro','MariaTeresa Arena',
+  'Danny Kuyrouz','Amelia Cannato','Carmine Arena','Francesco Arena',
+  'Winnie McLaughlin','Caroline Lally','Luke Walsh','Flynn Walsh','James Bowman',
+  'Emmie Valenzuela','Antony Marcucci','Maggie Woodard','Amelia Choate',
+  'Andrew Foraker','Bella Calvo','Ben Biggins','Blake Masso','Will OBrien',
+  'Bridget Gonya','Caroline Gonya','Bowman Rhinesmith','Cat Choate','Catalina Calvo',
+  'Catarina Franchi','Catherine McLaughlin','Cecelia Lateo','Charbel Almacari',
+  'Charlotte Keefe','Christine Cheely','Sammy Biggins','Clare Walsh','Cormac Doyle',
+  'Dermot O\'Boyle','Dottie Mahoney','Kaylee Cumming','Elizabeth Brown','Ella Hill',
+  'Emilia Parrella','Emily Rameaka','Owen Rameaka','Grace Ahearn','Grace Finnegan',
+  'Grace Garvey','Grace Lynch','Graham Evans','Nicholas Arico','Grace Nohrden','Griffin Masso',
+  'Hannah Keefe','Meghan Gonya','Joseph Cumming','Illai Gutierrez','Immanuel Marmol',
+  'James Golden','James Marcucci','James Walsh','Jenna Gorman','JJ Bachiochi',
+  'John Enriquez','John Nohrden','John Sullivan','Joseph Brennan','JP Golden',
+  'Julianna Gutierrez','Kate Worcester','Keira Parrella','Libby Hamel',
+  'Lily Nohrden','Livina Vaz','Luke Bachiochi','Michael Gonya','Maeve Walsh',
+  'Maggie Arico','Mairead Flynn','Abby Biggins','Marae McCarthy','Maria McQuade',
+  'MaryRose Mahoney','Thomas Mahoney','Matthew Brennan','Mia Driscoll','Mia Fiala','Michael Kenney',
+  'Michelle Ide','Mitch Finnegan','Nathan Behrmann','Nico Reardon','Noah Crowder',
+  'Noelle Watt','Nora Konetzny','Paul Mahoney','Owen Gonet','Paul Haggarty','Penny Awad',
+  'Peter Keefe','Reese Masso','Sophia Nicholson','Stella Driscoll','Ted Worcester',
+  'Thomas Cleary','Tim Hill','Timmy Brown','Tom Marcucci','Tommy Biggins',
+  'Tommy Hamel','Will Enriquez','Will Finnegan','Nicholas McCarty','Will Vaccaro','Winnie Subber',
+  'Wyatt Subber','Xavier Bogart','Raphael Ide','Gigi Arico','Maria Elena Franchi','Natalia McLaughlin',
+  'Cece McLaughlin','Genevieve Nohrden','Catalina Perdomo','Bella Gonet',
+  'Ali Hamel','Ella Cronin','Alina Falcao','Paxton Roper','Caterina Franchi',
+  'Alex Matiolli','Matt Cunis','Keira Hyatt','MJ Phelps','Mary Marshall',
+  'Xavien Crowder','James Kerr','Irena Sabtchev','Paulina Arena','Leah Vaz',
+  'Jane Marino','Ali Walsh','Natalie Bowman','Annabell Malow','Claire Olohan',
+  'Jonathan Thomas','Mason Conlon','Allie Fetter','Charlie Phelps','Jackie Sparks',
+  'Keegan Masso','Paul Murphy','Eamon Keefe','Lyla McCarthy','Eli Joanis',
+  'Henry Bowman','John Nelson','Lucy Tierney','Sara Johnson','Sarah Flaherty',
+  'Caleb Wells','Caroline Kenney','Cece Whallen','Daniel Woods','Kevin Judge',
+  'Luke Brown','Nicholas Montalbano','Elizabeth Barrette','Jack Finnegan','Hayley Grinn',
+  'Jacky Grinn','Alana Hyatt','Ali Fetter','Andrew DiBartola','Ava Robinson',
+  'Ben Vaccarro','Caroline Bernier','Clare Higgins','Dan Warren','Daniel Woodard',
+  'Elizabeth Brennan','Gabby Graziano','Henry Awad','Kat Flynn','Logan Conlon',
+  'Luli Martinez','Maggie Roche','Midas Videra','Nick Arico','Nora Burke','Olivia Peterson',
+  'Shannon Burke','Teddy Robertson','Thomas Behrmann','Victoria Florez','Will Parrella',
+  'Anne Marie Nohrden','Aniya Gutierrez'
+];
+
+const STORAGE_KEY = "st_thomas_demographics_records_v1";
+const nameSelect = document.getElementById("nameSelect");
+const eventDateInput = document.getElementById("eventDate");
+const tableNumberInput = document.getElementById("tableNumber");
+const noteInput = document.getElementById("noteInput");
+
+eventDateInput.value = new Date().toISOString().slice(0, 10);
+
+allAttendees.slice().sort((a, b) => a.localeCompare(b)).forEach(name => {
+  const opt = document.createElement("option");
+  opt.value = name;
+  opt.textContent = name;
+  nameSelect.appendChild(opt);
+});
+
+function getRecords() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecords(records) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+}
+
+function addRecord() {
+  const name = nameSelect.value;
+  const date = eventDateInput.value;
+  const table = tableNumberInput.value.trim();
+  const note = noteInput.value.trim();
+
+  if (!name || !date) {
+    alert("Please choose a name and event date.");
+    return;
+  }
+
+  const records = getRecords();
+  records.push({ name, date, table, note });
+  saveRecords(records);
+
+  tableNumberInput.value = "";
+  noteInput.value = "";
+  renderTable();
+}
+
+function summarizeRecords(records) {
+  const map = new Map();
+  allAttendees.forEach(name => map.set(name, { count: 0, tables: new Set(), notes: [], lastDate: "" }));
+
+  records.forEach(r => {
+    if (!map.has(r.name)) map.set(r.name, { count: 0, tables: new Set(), notes: [], lastDate: "" });
+    const entry = map.get(r.name);
+    entry.count += 1;
+    if (r.table) entry.tables.add(r.table);
+    if (r.note) entry.notes.push(`[${r.date}] ${r.note}`);
+    if (!entry.lastDate || r.date > entry.lastDate) entry.lastDate = r.date;
+  });
+
+  return [...map.entries()].map(([name, value]) => ({
+    name,
+    count: value.count,
+    tables: [...value.tables],
+    notes: value.notes.slice(-3),
+    lastDate: value.lastDate
+  }));
+}
+
+function renderTable() {
+  const records = getRecords();
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  const summary = summarizeRecords(records)
+    .filter(row => row.name.toLowerCase().includes(query))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  const tbody = document.getElementById("summaryBody");
+  tbody.innerHTML = "";
+
+  summary.forEach(row => {
+    const tr = document.createElement("tr");
+    const tables = row.tables.length
+      ? `<div class="tags">${row.tables.sort((a,b)=>String(a).localeCompare(String(b), undefined, {numeric:true})).map(t => `<span class="tag">Table ${t}</span>`).join("")}</div>`
+      : '<span class="small">—</span>';
+    const notes = row.notes.length
+      ? row.notes.map(note => `<div>${note}</div>`).join("")
+      : '<span class="small">—</span>';
+
+    tr.innerHTML = `
+      <td><strong>${row.name}</strong>${row.lastDate ? `<div class="small">Last attended: ${row.lastDate}</div>` : ""}</td>
+      <td>${row.count}</td>
+      <td>${tables}</td>
+      <td>${notes}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const attendeesWithVisits = summary.filter(x => x.count > 0).length;
+  const totalVisits = summary.reduce((sum, row) => sum + row.count, 0);
+  document.getElementById("stats").textContent = `Total attendees in roster: ${allAttendees.length} | Attendees with at least 1 record: ${attendeesWithVisits} | Total attendance records logged: ${totalVisits}`;
+}
+
+function clearRecords() {
+  if (!window.confirm("Clear all saved attendance records? This cannot be undone.")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  renderTable();
+}
+
+function downloadCSV() {
+  const summary = summarizeRecords(getRecords());
+  const esc = value => `"${String(value || "").replace(/"/g, '""')}"`;
+  let csv = 'Name,Times Attended,Tables,Recent Notes\n';
+  summary.forEach(row => {
+    csv += [
+      esc(row.name),
+      esc(row.count),
+      esc(row.tables.join("; ")),
+      esc(row.notes.join(" | "))
+    ].join(",") + "\n";
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "attendee_demographics_summary.csv";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+function toggleDarkMode() {
+  document.body.classList.toggle("dark-mode");
+  const button = document.getElementById("darkModeBtn");
+  const isDark = document.body.classList.contains("dark-mode");
+  button.textContent = isDark ? "Turn off Dark Mode" : "Turn on Dark Mode";
+}
+
+renderTable();
+</script>
+</body>
+</html>
