@@ -60,6 +60,17 @@ h3 {
   margin: 0;
 }
 
+.page-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: #007aff;
+  text-decoration: none;
+}
+
+.page-link:hover {
+  text-decoration: underline;
+}
+
 /* =========================
    CARDS
 ========================= */
@@ -232,6 +243,10 @@ body.dark-mode .header-subtitle,
 body.dark-mode .helper-text,
 body.dark-mode .field-label {
   color: #b0b0b5;
+}
+
+body.dark-mode .page-link {
+  color: #66a7ff;
 }
 
 /* =========================
@@ -504,6 +519,7 @@ body.dark-mode .suggestion-item.active {
 
 <header class="page-header">
   <h1>Saint Thomas Youth Group Attendance <span>Track attendance, tables, and notes</span></h1>
+  <a class="page-link" href="demographics.html">Go to Demographics Page</a>
 </header>
 
 <div class="toolbar">
@@ -940,8 +956,17 @@ function exportToCSV() {
   const filename = `youth_group_attendees_${month}_${day}_${year}.csv`;
   const combined = [...presentList];
   const escapeField = value => `"${String(value).replace(/"/g, '""')}"`;
-  let csv="Name,Notes\n";
-  combined.forEach(obj=>csv+=`${escapeField(obj.name)},${escapeField(obj.notes||"")}\n`);
+  const tableByAttendee = new Map();
+  tables.forEach((table, index) => {
+    const tableNumber = index + 1;
+    table.forEach(name => tableByAttendee.set(name, tableNumber));
+  });
+
+  let csv="Name,Table Number,Notes\n";
+  combined.forEach(obj=>{
+    const tableNumber = tableByAttendee.get(obj.name) || "";
+    csv += `${escapeField(obj.name)},${escapeField(tableNumber)},${escapeField(obj.notes||"")}\n`;
+  });
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link=document.createElement("a");
   link.href=URL.createObjectURL(blob);
@@ -1055,4 +1080,3 @@ function toggleDarkMode() {
 </script>
 </body>
 </html>
-
