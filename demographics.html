@@ -32,12 +32,14 @@ th { font-size: 12px; text-transform: uppercase; color:#6e6e73; letter-spacing: 
 .small { font-size: 13px; color:#6e6e73; margin: 0; }
 .tags { display:flex; flex-wrap:wrap; gap:6px; }
 .tag { background:#f2f2f7; border:1px solid #d1d1d6; padding:2px 8px; border-radius:999px; font-size:12px; }
+.import-panel { margin-top: 14px; padding-top: 14px; border-top: 1px solid #ececf0; }
 body.dark-mode { background: linear-gradient(#1c1c1e,#000); color:#f2f2f7; }
 body.dark-mode .card { background:#2c2c2e; border-color: rgba(255,255,255,.1); }
 body.dark-mode label, body.dark-mode .small, body.dark-mode th { color:#b0b0b5; }
 body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background:#1c1c1e; color:#f2f2f7; border-color:#3a3a3c; }
 body.dark-mode button.ghost { background:#3a3a3c; color:#f2f2f7; border-color:#48484a; }
 body.dark-mode .tag { background:#3a3a3c; border-color:#48484a; }
+body.dark-mode .import-panel { border-top-color:#3a3a3c; }
 </style>
 </head>
 <body>
@@ -72,6 +74,13 @@ body.dark-mode .tag { background:#3a3a3c; border-color:#48484a; }
     <button type="button" onclick="addRecord()">Add Record</button>
     <button type="button" class="secondary" onclick="downloadCSV()">Download Demographics CSV</button>
     <button type="button" class="ghost" onclick="clearRecords()">Clear All Records</button>
+
+    <div class="import-panel">
+      <label for="csvUpload">Upload attendance spreadsheets (CSV)</label>
+      <input id="csvUpload" type="file" accept=".csv" multiple />
+      <button type="button" class="ghost" onclick="importAttendanceCSVs()">Import Uploaded Files</button>
+      <p id="importStatus" class="small">Tip: Select multiple exported attendance CSVs and import all at once.</p>
+    </div>
   </section>
 
   <section class="card">
@@ -95,7 +104,7 @@ body.dark-mode .tag { background:#3a3a3c; border-color:#48484a; }
 
 <script>
 const allAttendees = [
-  'Mara Wesolowski','Allie Choate','Bria Santoro','MariaTeresa Arena',
+  'A person','Mara Wesolowski','Allie Choate','Bria Santoro','MariaTeresa Arena',
   'Danny Kuyrouz','Amelia Cannato','Carmine Arena','Francesco Arena',
   'Winnie McLaughlin','Caroline Lally','Luke Walsh','Flynn Walsh','James Bowman',
   'Emmie Valenzuela','Antony Marcucci','Maggie Woodard','Amelia Choate',
@@ -142,6 +151,8 @@ const nameSelect = document.getElementById("nameSelect");
 const eventDateInput = document.getElementById("eventDate");
 const tableNumberInput = document.getElementById("tableNumber");
 const noteInput = document.getElementById("noteInput");
+const csvUploadInput = document.getElementById("csvUpload");
+const importStatus = document.getElementById("importStatus");
 
 eventDateInput.value = new Date().toISOString().slice(0, 10);
 
@@ -183,6 +194,111 @@ function addRecord() {
   tableNumberInput.value = "";
   noteInput.value = "";
   renderTable();
+}
+
+function normalizeDate(value) {
+  if (!value) return "";
+  const v = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const mdy = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (mdy) {
+    const mm = mdy[1].padStart(2, "0");
+    const dd = mdy[2].padStart(2, "0");
+    const yy = mdy[3].length === 2 ? `20${mdy[3]}` : mdy[3];
+    return `${yy}-${mm}-${dd}`;
+  }
+  return "";
+}
+
+function extractDateFromFilename(filename) {
+  if (!filename) return "";
+  const match = filename.match(/(\d{1,2})_(\d{1,2})_(\d{2,4})/);
+  if (!match) return "";
+  const mm = match[1].padStart(2, "0");
+  const dd = match[2].padStart(2, "0");
+  const yy = match[3].length === 2 ? `20${match[3]}` : match[3];
+  return `${yy}-${mm}-${dd}`;
+}
+
+function parseCSVLine(line) {
+  const out = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  out.push(current.trim());
+  return out;
+}
+
+function parseCSVRows(content) {
+  const lines = content.split(/\r?\n/).filter(line => line.trim());
+  return lines.map(parseCSVLine);
+}
+
+function findColumnIndex(headers, candidates) {
+  const lower = headers.map(h => String(h || "").toLowerCase().trim());
+  return lower.findIndex(h => candidates.some(c => h === c || h.includes(c)));
+}
+
+async function importAttendanceCSVs() {
+  const files = [...csvUploadInput.files];
+  if (!files.length) {
+    importStatus.textContent = "Choose at least one CSV file first.";
+    return;
+  }
+
+  const existing = getRecords();
+  const dedupe = new Set(existing.map(r => `${r.name}|${r.date}|${r.table}|${r.note}`));
+  let imported = 0;
+  let skipped = 0;
+
+  for (const file of files) {
+    const text = await file.text();
+    const rows = parseCSVRows(text);
+    if (!rows.length) continue;
+
+    const headers = rows[0];
+    const nameIdx = findColumnIndex(headers, ["name", "attendee"]);
+    const notesIdx = findColumnIndex(headers, ["notes", "note"]);
+    const tableIdx = findColumnIndex(headers, ["table", "group"]);
+    const dateIdx = findColumnIndex(headers, ["date", "event date"]);
+    const fallbackDate = extractDateFromFilename(file.name) || new Date().toISOString().slice(0, 10);
+
+    for (let i = 1; i < rows.length; i += 1) {
+      const row = rows[i];
+      const name = (nameIdx >= 0 ? row[nameIdx] : row[0] || "").trim();
+      if (!name) { skipped += 1; continue; }
+      const rawDate = dateIdx >= 0 ? row[dateIdx] : "";
+      const date = normalizeDate(rawDate) || fallbackDate;
+      const table = tableIdx >= 0 ? (row[tableIdx] || "").trim() : "";
+      const note = notesIdx >= 0 ? (row[notesIdx] || "").trim() : "";
+
+      const key = `${name}|${date}|${table}|${note}`;
+      if (dedupe.has(key)) { skipped += 1; continue; }
+      dedupe.add(key);
+      existing.push({ name, date, table, note });
+      imported += 1;
+    }
+  }
+
+  saveRecords(existing);
+  renderTable();
+  importStatus.textContent = `Imported ${imported} records (${skipped} duplicates/blank rows skipped).`;
+  csvUploadInput.value = "";
 }
 
 function summarizeRecords(records) {
