@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saint Thomas Points Calculator</title>
+<style>
+* { box-sizing: border-box; }
+:root {
+  --bg: #f5f5f7;
+  --card: rgba(255,255,255,0.88);
+  --text: #1d1d1f;
+  --muted: #6e6e73;
+  --line: rgba(0,0,0,0.08);
+  --blue: #0071e3;
+  --green: #34c759;
+  --red: #ff3b30;
+}
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, rgba(90, 160, 255, 0.24), transparent 56%), var(--bg);
+  color: var(--text);
+  padding: 24px;
+  max-width: 1100px;
+  margin-inline: auto;
+}
+h1 { margin: 0 0 6px; font-size: 34px; letter-spacing: -0.02em; }
+.subtitle { margin: 0 0 14px; color: var(--muted); }
+.small { font-size: 13px; color: var(--muted); }
+a { color: var(--blue); text-decoration: none; font-weight: 600; }
+a:hover { text-decoration: underline; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  backdrop-filter: blur(10px);
+}
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+label { display: block; font-size: 13px; font-weight: 600; color: #5a5a5f; margin-bottom: 6px; }
+input, select, textarea, button { font: inherit; }
+input, select, textarea {
+  width: 100%;
+  border: 1px solid #d2d2d7;
+  border-radius: 12px;
+  padding: 12px;
+  background: white;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(0,113,227,0.16);
+}
+button {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  font-weight: 600;
+  background: var(--blue);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(0,122,255,0.25);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+button:hover { transform: translateY(-1px); }
+button:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px rgba(0,122,255,0.25);
+}
+button.secondary { background: var(--green); }
+button.ghost {
+  background: #f2f2f7;
+  color: #313135;
+  border: 1px solid #d2d2d7;
+}
+button.danger { background: var(--red); }
+.toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #f2f2f7;
+  border-radius: 999px;
+  padding: 6px;
+}
+.tab-btn {
+  border-radius: 999px;
+  padding: 8px 12px;
+  box-shadow: none;
+  background: transparent;
+  color: #35353a;
+  border: 1px solid transparent;
+}
+.tab-btn.active {
+  background: white;
+  color: var(--blue);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+th, td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid #ececf0;
+  font-size: 14px;
+  vertical-align: top;
+}
+th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.number-input { max-width: 110px; }
+.compact { max-width: 180px; }
+
+</style>
+</head>
+<body>
+  <h1>Spreadsheet Points Calculator</h1>
+  <p class="subtitle">Create tabs by date, set event type + points per tab, upload a CSV, and adjust points (+/-) per attendee.</p>
+  <p class="small"><a href="index.html">← Back to Attendance</a></p>
+
+  <section class="card">
+    <h3 style="margin-top:0;">Global Settings</h3>
+    <div class="grid">
+      <div>
+        <label for="defaultRosary">Default Rosary points</label>
+        <input id="defaultRosary" type="number" min="0" value="8" />
+      </div>
+      <div>
+        <label for="defaultYouth">Default Youth Group points</label>
+        <input id="defaultYouth" type="number" min="0" value="20" />
+      </div>
+      <div>
+        <label for="defaultHolyHour">Default Holy Hour points</label>
+        <input id="defaultHolyHour" type="number" min="0" value="15" />
+      </div>
+      <div>
+        <label for="defaultService">Default Service points</label>
+        <input id="defaultService" type="number" min="0" value="30" />
+      </div>
+      <div>
+        <label for="coreMultiplier">Core multiplier</label>
+        <input id="coreMultiplier" type="number" min="1" step="0.01" value="1.25" />
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <label for="coreNames">Core members (one per line)</label>
+      <textarea id="coreNames" rows="4" placeholder="Raphael Ide\nGigi Arico"></textarea>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="toolbar" style="justify-content:space-between;">
+      <h3 style="margin:0;">Event Tabs by Date</h3>
+      <button type="button" id="addDateTabBtn">+ Add New Date Tab</button>
+    </div>
+    <div class="tabs" id="dateTabs" role="tablist" aria-label="Date tabs"></div>
+  </section>
+
+  <section id="tabPanels"></section>
+
+  <section class="card">
+    <h3 style="margin-top:0;">Overall Totals (All Date Tabs)</h3>
+    <p class="small">This sums points from every date tab.</p>
+    <div class="toolbar">
+      <button type="button" class="secondary" id="downloadOverallBtn">Download Overall CSV</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Total Points</th><th>Per-Date Breakdown</th>
+        </tr>
+      </thead>
+      <tbody id="overallBody"></tbody>
+    </table>
+  </section>
+
+<script>
+const STORAGE_KEY = "st_thomas_points_tabs_v2";
+const EVENT_OPTIONS = ["Rosary", "Youth Group", "Holy Hour", "Service", "Custom"];
+const tabsState = [];
+let activeTabId = null;
+
+function getDefaultPointsByEvent() {
+  return {
+    Rosary: Math.max(0, Number(document.getElementById("defaultRosary").value) || 0),
+    "Youth Group": Math.max(0, Number(document.getElementById("defaultYouth").value) || 0),
+    "Holy Hour": Math.max(0, Number(document.getElementById("defaultHolyHour").value) || 0),
+    Service: Math.max(0, Number(document.getElementById("defaultService").value) || 0)
+  };
+}
+
+function getCoreSet() {
+  return new Set(
+    document.getElementById("coreNames").value
+      .split(/\r?\n/)
+      .map(v => v.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function parseCSVLine(line) {
+  const out = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
+      out.push(cur.trim());
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur.trim());
+  return out;
+}
+
+function escapeCSV(v) {
+  return `"${String(v ?? "").replace(/"/g, '""')}"`;
+}
+
+function createTab({ date = "", eventType = "Rosary", basePoints = null, rows = [] } = {}) {
+  const defaults = getDefaultPointsByEvent();
+  const tab = {
+    id: `tab-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    date,
+    eventType,
+    basePoints: basePoints ?? (defaults[eventType] ?? 0),
+    rows
+  };
+  tabsState.push(tab);
+  activeTabId = tab.id;
+  renderTabs();
+  saveState();
+}
+
+function removeTab(tabId) {
+  const idx = tabsState.findIndex(t => t.id === tabId);
+  if (idx === -1) return;
+  tabsState.splice(idx, 1);
+  if (activeTabId === tabId) {
+    activeTabId = tabsState[0]?.id || null;
+  }
+  renderTabs();
+  renderOverall();
+  saveState();
+}
+
+function switchTab(tabId) {
+  activeTabId = tabId;
+  renderTabs();
+  saveState();
+}
+
+function computeFinalPoints(basePoints, isCore, adjustment, multiplier) {
+  const adjustedBase = isCore ? Math.round(basePoints * multiplier) : basePoints;
+  return adjustedBase + adjustment;
+}
+
+
+function extractDateFromFilename(filename) {
+  if (!filename) return "";
+
+  const usUnderscore = filename.match(/(\d{1,2})_(\d{1,2})_(\d{2,4})/);
+  if (usUnderscore) {
+    const mm = usUnderscore[1].padStart(2, "0");
+    const dd = usUnderscore[2].padStart(2, "0");
+    const yy = usUnderscore[3].length === 2 ? `20${usUnderscore[3]}` : usUnderscore[3];
+    return `${yy}-${mm}-${dd}`;
+  }
+
+  const iso = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  return "";
+}
+
+async function importCSVForTab(tabId) {
+  const tab = tabsState.find(t => t.id === tabId);
+  if (!tab) return;
+
+  const input = document.getElementById(`file-${tabId}`);
+  const status = document.getElementById(`status-${tabId}`);
+  const file = input.files[0];
+
+  if (!file) {
+    status.textContent = "Please choose a CSV file first.";
+    return;
+  }
+
+  const filenameDate = extractDateFromFilename(file.name);
+  if (filenameDate) {
+    tab.date = filenameDate;
+  }
+
+  const coreSet = getCoreSet();
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  if (lines.length < 2) {
+    status.textContent = "CSV must have header + at least one data row.";
+    return;
+  }
+
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  let nameIdx = headers.findIndex(h => h === "name" || h.includes("name"));
+  let notesIdx = headers.findIndex(h => h === "notes" || h.includes("note"));
+  let adjustIdx = headers.findIndex(h => h === "adjustment" || h.includes("adjust"));
+  if (nameIdx === -1) nameIdx = 0;
+
+  const multiplier = Math.max(1, Number(document.getElementById("coreMultiplier").value) || 1);
+  const basePoints = Math.max(0, Number(tab.basePoints) || 0);
+
+  tab.rows = lines.slice(1).map(parseCSVLine).map(cols => {
+    const name = (cols[nameIdx] || "").trim();
+    const notes = notesIdx >= 0 ? (cols[notesIdx] || "").trim() : "";
+    const adjustment = adjustIdx >= 0 ? Number(cols[adjustIdx]) || 0 : 0;
+    const isCore = coreSet.has(name.toLowerCase());
+    const finalPoints = computeFinalPoints(basePoints, isCore, adjustment, multiplier);
+    return { name, isCore, adjustment, notes, finalPoints };
+  }).filter(r => r.name);
+
+  status.textContent = `Imported ${tab.rows.length} attendees.`;
+  renderTabs();
+  renderOverall();
+  saveState();
+}
+
+function updateRow(tabId, rowIndex, field, value) {
+  const tab = tabsState.find(t => t.id === tabId);
+  if (!tab || !tab.rows[rowIndex]) return;
+  tab.rows[rowIndex][field] = value;
+
+  const multiplier = Math.max(1, Number(document.getElementById("coreMultiplier").value) || 1);
+  const basePoints = Math.max(0, Number(tab.basePoints) || 0);
+  const row = tab.rows[rowIndex];
+  row.finalPoints = computeFinalPoints(basePoints, row.isCore, Number(row.adjustment) || 0, multiplier);
+
+  renderOverall();
+  saveState();
+}
+
+function refreshTabTotals(tabId) {
+  const tab = tabsState.find(t => t.id === tabId);
+  if (!tab) return;
+  const coreSet = getCoreSet();
+  const multiplier = Math.max(1, Number(document.getElementById("coreMultiplier").value) || 1);
+  const basePoints = Math.max(0, Number(tab.basePoints) || 0);
+
+  tab.rows = tab.rows.map(row => {
+    const isCore = coreSet.has(row.name.toLowerCase());
+    const adjustment = Number(row.adjustment) || 0;
+    const finalPoints = computeFinalPoints(basePoints, isCore, adjustment, multiplier);
+    return { ...row, isCore, adjustment, finalPoints };
+  });
+}
+
+function downloadTabCSV(tabId) {
+  const tab = tabsState.find(t => t.id === tabId);
+  if (!tab || !tab.rows.length) return;
+  let csv = "Name,Date,Event Type,Base Points,Is Core,Adjustment,Final Points,Notes\n";
+  tab.rows.forEach(row => {
+    csv += [
+      escapeCSV(row.name), escapeCSV(tab.date), escapeCSV(tab.eventType), escapeCSV(tab.basePoints),
+      escapeCSV(row.isCore ? "Yes" : "No"), escapeCSV(row.adjustment), escapeCSV(row.finalPoints), escapeCSV(row.notes)
+    ].join(",") + "\n";
+  });
+  downloadCSV(`${tab.date || 'undated'}_${tab.eventType.replace(/\s+/g, '_')}_points.csv`, csv);
+}
+
+function renderTabs() {
+  const tabsWrap = document.getElementById("dateTabs");
+  const panelsWrap = document.getElementById("tabPanels");
+  tabsWrap.innerHTML = "";
+  panelsWrap.innerHTML = "";
+
+  if (!tabsState.length) {
+    panelsWrap.innerHTML = `<section class="card"><p class="small">No tabs yet. Click <strong>+ Add New Date Tab</strong>.</p></section>`;
+    return;
+  }
+
+  tabsState.forEach(tab => {
+    const btn = document.createElement("button");
+    btn.className = `tab-btn ${tab.id === activeTabId ? "active" : ""}`;
+    btn.textContent = tab.date || "New Date";
+    btn.addEventListener("click", () => switchTab(tab.id));
+    tabsWrap.appendChild(btn);
+
+    const panel = document.createElement("section");
+    panel.className = `card tab-panel ${tab.id === activeTabId ? "active" : ""}`;
+
+    panel.innerHTML = `
+      <div class="grid">
+        <div>
+          <label>Date</label>
+          <input id="date-${tab.id}" type="date" value="${tab.date}" />
+        </div>
+        <div>
+          <label>Event Type</label>
+          <select id="event-${tab.id}">
+            ${EVENT_OPTIONS.map(opt => `<option value="${opt}" ${opt === tab.eventType ? "selected" : ""}>${opt}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>Points for this event</label>
+          <input id="points-${tab.id}" class="number-input" type="number" min="0" value="${tab.basePoints}" />
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-top:12px;">
+        <input id="file-${tab.id}" class="compact" type="file" accept=".csv" />
+        <span class="small">Date auto-fills from spreadsheet filename when available.</span>
+        <button type="button" id="import-${tab.id}">Import CSV</button>
+        <button type="button" class="secondary" id="download-${tab.id}">Download Tab CSV</button>
+        <button type="button" class="danger" id="delete-${tab.id}">Delete Tab</button>
+      </div>
+      <p id="status-${tab.id}" class="small">Rows: ${tab.rows.length}</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Core</th>
+            <th>Adjustment (+/-)</th>
+            <th>Final Points</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody id="body-${tab.id}">
+          ${tab.rows.map((row, idx) => `
+            <tr>
+              <td>${row.name}</td>
+              <td>${row.isCore ? "Yes" : "No"}</td>
+              <td><input type="number" data-tab="${tab.id}" data-idx="${idx}" data-field="adjustment" value="${row.adjustment}" class="number-input"></td>
+              <td>${row.finalPoints}</td>
+              <td><textarea data-tab="${tab.id}" data-idx="${idx}" data-field="notes" rows="1">${row.notes || ""}</textarea></td>
+            </tr>
+          `).join("") || `<tr><td colspan="5" class="small">No attendee rows yet. Import a CSV.</td></tr>`}
+        </tbody>
+      </table>
+    `;
+
+    panelsWrap.appendChild(panel);
+
+    document.getElementById(`date-${tab.id}`).addEventListener("input", e => {
+      tab.date = e.target.value;
+      renderTabs();
+      renderOverall();
+      saveState();
+    });
+
+    document.getElementById(`event-${tab.id}`).addEventListener("input", e => {
+      tab.eventType = e.target.value;
+      const defaults = getDefaultPointsByEvent();
+      if (defaults[tab.eventType] != null) {
+        tab.basePoints = defaults[tab.eventType];
+      }
+      refreshTabTotals(tab.id);
+      renderTabs();
+      renderOverall();
+      saveState();
+    });
+
+    document.getElementById(`points-${tab.id}`).addEventListener("input", e => {
+      tab.basePoints = Math.max(0, Number(e.target.value) || 0);
+      refreshTabTotals(tab.id);
+      renderTabs();
+      renderOverall();
+      saveState();
+    });
+
+    document.getElementById(`import-${tab.id}`).addEventListener("click", () => importCSVForTab(tab.id));
+    document.getElementById(`download-${tab.id}`).addEventListener("click", () => downloadTabCSV(tab.id));
+    document.getElementById(`delete-${tab.id}`).addEventListener("click", () => removeTab(tab.id));
+  });
+
+  panelsWrap.querySelectorAll("[data-field]").forEach(el => {
+    el.addEventListener("input", event => {
+      const tabId = event.target.dataset.tab;
+      const idx = Number(event.target.dataset.idx);
+      const field = event.target.dataset.field;
+      const value = field === "adjustment" ? Number(event.target.value) || 0 : event.target.value;
+      updateRow(tabId, idx, field, value);
+      if (field === "adjustment") renderTabs();
+    });
+  });
+}
+
+function renderOverall() {
+  const map = new Map();
+  tabsState.forEach(tab => {
+    tab.rows.forEach(row => {
+      if (!map.has(row.name)) {
+        map.set(row.name, { name: row.name, total: 0, perDate: [] });
+      }
+      const person = map.get(row.name);
+      person.total += Number(row.finalPoints) || 0;
+      person.perDate.push(`${tab.date || "No date"} (${tab.eventType}): ${row.finalPoints}`);
+    });
+  });
+
+  const rows = [...map.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const body = document.getElementById("overallBody");
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.name}</td>
+      <td><strong>${r.total}</strong></td>
+      <td>${r.perDate.join("<br>")}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="3" class="small">No totals yet. Import at least one tab CSV.</td></tr>`;
+}
+
+function downloadOverallCSV() {
+  const map = new Map();
+  tabsState.forEach(tab => {
+    tab.rows.forEach(row => {
+      if (!map.has(row.name)) {
+        map.set(row.name, { name: row.name, total: 0 });
+      }
+      map.get(row.name).total += Number(row.finalPoints) || 0;
+    });
+  });
+
+  const rows = [...map.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  let csv = "Name,Total Points\n";
+  rows.forEach(row => {
+    csv += `${escapeCSV(row.name)},${escapeCSV(row.total)}\n`;
+  });
+  downloadCSV("overall_date_tabs_totals.csv", csv);
+}
+
+function downloadCSV(filename, content) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+function saveState() {
+  const payload = {
+    defaults: {
+      defaultRosary: document.getElementById("defaultRosary").value,
+      defaultYouth: document.getElementById("defaultYouth").value,
+      defaultHolyHour: document.getElementById("defaultHolyHour").value,
+      defaultService: document.getElementById("defaultService").value,
+      coreMultiplier: document.getElementById("coreMultiplier").value,
+      coreNames: document.getElementById("coreNames").value
+    },
+    tabsState,
+    activeTabId
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+
+    if (saved.defaults) {
+      document.getElementById("defaultRosary").value = saved.defaults.defaultRosary ?? 8;
+      document.getElementById("defaultYouth").value = saved.defaults.defaultYouth ?? 20;
+      document.getElementById("defaultHolyHour").value = saved.defaults.defaultHolyHour ?? 15;
+      document.getElementById("defaultService").value = saved.defaults.defaultService ?? 30;
+      document.getElementById("coreMultiplier").value = saved.defaults.coreMultiplier ?? 1.25;
+      document.getElementById("coreNames").value = saved.defaults.coreNames ?? "";
+    }
+
+    if (Array.isArray(saved.tabsState)) {
+      tabsState.splice(0, tabsState.length, ...saved.tabsState.map(tab => ({
+        id: tab.id || `tab-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        date: tab.date || "",
+        eventType: tab.eventType || "Rosary",
+        basePoints: Math.max(0, Number(tab.basePoints) || 0),
+        rows: Array.isArray(tab.rows) ? tab.rows : []
+      })));
+    }
+
+    activeTabId = saved.activeTabId || tabsState[0]?.id || null;
+  } catch {
+    // ignore malformed localStorage
+  }
+}
+
+document.getElementById("addDateTabBtn").addEventListener("click", () => createTab());
+document.getElementById("downloadOverallBtn").addEventListener("click", downloadOverallCSV);
+
+["defaultRosary", "defaultYouth", "defaultHolyHour", "defaultService", "coreMultiplier", "coreNames"].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    tabsState.forEach(tab => refreshTabTotals(tab.id));
+    renderTabs();
+    renderOverall();
+    saveState();
+  });
+});
+
+loadState();
+if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+renderTabs();
+renderOverall();
+</script>
+</body>
+</html>
