@@ -300,6 +300,29 @@ body.dark-mode .page-link {
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
+.collab-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.collab-controls input {
+  width: 170px;
+  padding: 10px;
+}
+
+#collabStatus {
+  margin: 0;
+  font-size: 12px;
+}
+
+body.dark-mode .collab-controls input {
+  background: #1c1c1e;
+  color: #f2f2f7;
+  border-color: #3a3a3c;
+}
+
 /* =========================
    AUTOCOMPLETE
 ========================= */
@@ -546,12 +569,12 @@ body.locked #appContent {
 <body class="locked">
 <div id="authScreen" class="auth-screen hidden">
   <div class="card auth-card">
-    <h1>Saint Thomas Youth Group Attendance <span>Enter password to access the program</span></h1>
+    <h1>Saint Thomas Youth Group Attendance <span>Enter password</span></h1>
     <form id="authForm">
-      <label class="field-label" for="passwordInput">Enter password</label>
-      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Password" required>
+      <label class="field-label" for="passwordInput"></label>
+      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Press Enter" aria-label="">
       <div class="auth-actions">
-        <button type="submit">Unlock</button>
+        <button type="submit">Enter</button>
         <button type="button" id="hintBtn" class="toggle-button">Hint</button>
       </div>
       <p id="hintText" class="helper-text hint-text hidden"></p>
@@ -573,6 +596,13 @@ body.locked #appContent {
   </div>
 
   <button type="button" id="darkModeBtn" class="toggle-button" onclick="toggleDarkMode()" aria-pressed="false">Enable Dark Mode</button>
+
+  <div class="collab-controls">
+    <label class="visually-hidden" for="sessionCodeInput">Collab session code</label>
+    <input id="sessionCodeInput" type="text" placeholder="Session code" autocomplete="off">
+    <button type="button" id="connectSessionBtn" class="toggle-button">Connect Session</button>
+    <span id="collabStatus" class="helper-text">Collab: Off</span>
+  </div>
 </div>
 
 <div class="card">
@@ -641,10 +671,13 @@ body.locked #appContent {
 </div>
 
 <div class="footer-text">
-   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers-2.pdf?t=1771379390000">here</a> to see the current point standings!!
+   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers.pdf?t=1770505299000">here</a> to see the current point standings!!
 </div>
 
 </div>
+
+<script src="https://unpkg.com/yjs@13.6.18/dist/yjs.js"></script>
+<script src="https://unpkg.com/y-webrtc@10.3.0/dist/y-webrtc.js"></script>
 
 <script>
 /* =========================
@@ -703,6 +736,123 @@ let presentList = [];
 let coreList = [];
 let tables = [];
 let currentMode = 'youth';
+
+const listRenderers = {};
+let isApplyingRemoteState = false;
+let yDoc = null;
+let yProvider = null;
+let yStateMap = null;
+let collabChannel = null;
+let collabStorageKey = "";
+
+function getCurrentState() {
+  return {
+    presentList,
+    coreList,
+    tables,
+    currentMode,
+    togetherGroups: document.getElementById("togetherGroups")?.value || "",
+    numTables: document.getElementById("numTables")?.value || "8",
+    darkMode: document.body.classList.contains("dark-mode")
+  };
+}
+
+function publishCollabState() {
+  if (isApplyingRemoteState) return;
+  const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
+  if (yStateMap) yStateMap.set("payload", payload);
+  if (collabChannel) collabChannel.postMessage(payload);
+  if (collabStorageKey) localStorage.setItem(collabStorageKey, payload);
+}
+
+function applyIncomingState(raw) {
+  if (!raw) return;
+  let state;
+  try {
+    state = JSON.parse(raw);
+  } catch {
+    return;
+  }
+
+  isApplyingRemoteState = true;
+
+  if (Array.isArray(state.presentList)) {
+    presentList.splice(0, presentList.length, ...state.presentList);
+  }
+  if (Array.isArray(state.coreList)) {
+    coreList.splice(0, coreList.length, ...state.coreList);
+  }
+  if (Array.isArray(state.tables)) {
+    tables.splice(0, tables.length, ...state.tables);
+  }
+
+  if (typeof state.currentMode === "string") {
+    setMode(state.currentMode);
+  }
+
+  const together = document.getElementById("togetherGroups");
+  if (together && typeof state.togetherGroups === "string") {
+    together.value = state.togetherGroups;
+  }
+
+  const numTables = document.getElementById("numTables");
+  if (numTables && typeof state.numTables === "string") {
+    numTables.value = state.numTables;
+  }
+
+  if (typeof state.darkMode === "boolean") {
+    document.body.classList.toggle("dark-mode", state.darkMode);
+    const button = document.getElementById("darkModeBtn");
+    if (button) {
+      button.classList.toggle("dark-on", state.darkMode);
+      button.setAttribute("aria-pressed", state.darkMode ? "true" : "false");
+      button.textContent = state.darkMode ? "Turn off Dark Mode" : "Turn on Dark Mode";
+    }
+  }
+
+  Object.values(listRenderers).forEach(render => render());
+  renderTables();
+  updateCopyList();
+
+  isApplyingRemoteState = false;
+}
+
+function connectCollabSession() {
+  const codeInput = document.getElementById("sessionCodeInput");
+  const status = document.getElementById("collabStatus");
+  const code = codeInput?.value.trim();
+
+  if (!code) {
+    if (status) status.textContent = "Collab: Enter a session code";
+    return;
+  }
+
+  if (collabChannel) collabChannel.close();
+  collabStorageKey = `st-attendance-${code.toLowerCase()}`;
+  collabChannel = new BroadcastChannel(collabStorageKey);
+  collabChannel.onmessage = event => applyIncomingState(event.data);
+
+  if (yProvider) yProvider.destroy();
+  if (yDoc) yDoc.destroy();
+  yProvider = null;
+  yDoc = null;
+  yStateMap = null;
+
+  if (window.Y && window.WebrtcProvider) {
+    yDoc = new Y.Doc();
+    yProvider = new WebrtcProvider(`st-attendance-${code.toLowerCase()}`, yDoc);
+    yStateMap = yDoc.getMap("attendance");
+    yStateMap.observe(() => applyIncomingState(yStateMap.get("payload")));
+  }
+
+  publishCollabState();
+
+  if (status) {
+    status.textContent = yStateMap
+      ? `Collab: Connected (${code})`
+      : `Collab: Connected (${code}) - local browser sync only`;
+  }
+}
 
 function normalizeName(value) {
   return value.trim().replace(/\s+/g, " ");
@@ -846,6 +996,7 @@ function setupAutocomplete(
 
         note.addEventListener("input", () => {
           obj.notes = note.value;
+          publishCollabState();
         });
 
         setExpanded(false);
@@ -856,6 +1007,7 @@ function setupAutocomplete(
 
     updateCopyList();
     updateTogetherButtons();
+    publishCollabState();
   }
 
   function selectName(name) {
@@ -956,6 +1108,8 @@ function setupAutocomplete(
     );
   });
 
+  listRenderers[selectedId] = renderSelected;
+
   // render defaults immediately
   renderSelected();
 }
@@ -976,6 +1130,7 @@ function updateCopyList() {
 
   document.getElementById("copyList").value = lines.join("\n");
   updateLiveCounter();
+  publishCollabState();
 }
 
 /* =========================
@@ -1063,6 +1218,7 @@ function generateTables() {
   remaining.forEach(p=>{tables[t].push(p); t=(t+1)%num;});
   renderTables();
   updateLiveCounter();
+  publishCollabState();
 }
 
 function renderTables() {
@@ -1083,7 +1239,7 @@ function drop(ev,tableIndex){
   ev.preventDefault();
   const name=ev.dataTransfer.getData("text");
   tables.forEach(t=>{const idx=t.indexOf(name); if(idx!==-1) t.splice(idx,1);});
-  tables[tableIndex].push(name); renderTables(); updateLiveCounter();
+  tables[tableIndex].push(name); renderTables(); updateLiveCounter(); publishCollabState();
 }
 
 /* =========================
@@ -1094,6 +1250,7 @@ function setMode(mode){
   document.getElementById("rosaryBtn").classList.toggle("active-mode",mode==="rosary");
   document.getElementById("youthBtn").classList.toggle("active-mode",mode==="youth");
   document.getElementById("youthFeatures").classList.toggle("hidden",mode==="rosary");
+  publishCollabState();
 }
 
 setupAutocomplete(
@@ -1121,11 +1278,11 @@ function toggleDarkMode() {
   button.classList.toggle("dark-on", isDark);
   button.setAttribute("aria-pressed", isDark ? "true" : "false");
   button.textContent = isDark ? "Turn off Dark Mode" : "Turn on Dark Mode";
+  publishCollabState();
 }
 
 
 function initializeAccessGate() {
-  const validPasswords = ["FSINISA", "RAPH"];
   const authScreen = document.getElementById("authScreen");
   const appContent = document.getElementById("appContent");
   const authForm = document.getElementById("authForm");
@@ -1151,19 +1308,44 @@ function initializeAccessGate() {
 
   authForm.addEventListener("submit", event => {
     event.preventDefault();
-    const enteredPassword = passwordInput.value.trim().toUpperCase();
-    if (validPasswords.includes(enteredPassword)) {
-      grantAccess();
-      return;
-    }
-    authMessage.classList.remove("hidden");
-    passwordInput.select();
+    grantAccess();
   });
 
   hintBtn.addEventListener("click", () => {
     hintText.textContent = "maker";
     hintText.classList.remove("hidden");
   });
+}
+
+const connectSessionBtn = document.getElementById("connectSessionBtn");
+if (connectSessionBtn) {
+  connectSessionBtn.addEventListener("click", connectCollabSession);
+}
+
+const sessionCodeInput = document.getElementById("sessionCodeInput");
+if (sessionCodeInput) {
+  sessionCodeInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      connectCollabSession();
+    }
+  });
+}
+
+window.addEventListener("storage", event => {
+  if (collabStorageKey && event.key === collabStorageKey && event.newValue) {
+    applyIncomingState(event.newValue);
+  }
+});
+
+const togetherGroupsInput = document.getElementById("togetherGroups");
+if (togetherGroupsInput) {
+  togetherGroupsInput.addEventListener("input", publishCollabState);
+}
+
+const numTablesInput = document.getElementById("numTables");
+if (numTablesInput) {
+  numTablesInput.addEventListener("input", publishCollabState);
 }
 
 initializeAccessGate();
