@@ -586,13 +586,15 @@ body.locked #appContent {
 <div id="appContent" class="hidden">
 <header class="page-header">
   <h1>Saint Thomas Youth Group Attendance <span>Track attendance, tables, and notes</span></h1>
-  Click <a class="page-link" href="demographics.html">here</a> to go to demographics page. 
+  Click <a class="page-link" href="demographics.html">here</a> for demographics or <a class="page-link" href="points-calculator.html">here</a> for spreadsheet point totals.
 </header>
 
 <div class="toolbar">
-  <div class="mode-buttons" role="group" aria-label="Select attendance mode">
-    <button type="button" id="rosaryBtn" class="mode-button" onclick="setMode('rosary')">Rosary / Holy Hour</button>
+  <div class="mode-buttons" role="group" aria-label="Select attendance event">
+    <button type="button" id="rosaryBtn" class="mode-button" onclick="setMode('rosary')">Rosary</button>
     <button type="button" id="youthBtn" class="mode-button active-mode" onclick="setMode('youth')">Youth Group</button>
+    <button type="button" id="holyHourBtn" class="mode-button" onclick="setMode('holyHour')">Holy Hour</button>
+    <button type="button" id="serviceBtn" class="mode-button" onclick="setMode('service')">Service</button>
   </div>
 
   <button type="button" id="darkModeBtn" class="toggle-button" onclick="toggleDarkMode()" aria-pressed="false">Enable Dark Mode</button>
@@ -650,6 +652,35 @@ body.locked #appContent {
     <div id="output"></div>
   </div>
 
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Point Settings</h3>
+  </div>
+  <p class="helper-text">Change point values anytime. Core members receive the multiplier shown below.</p>
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+    <div>
+      <label class="field-label" for="pointsRosary">Rosary points</label>
+      <input id="pointsRosary" type="number" min="0" step="1" value="8">
+    </div>
+    <div>
+      <label class="field-label" for="pointsYouth">Youth Group points</label>
+      <input id="pointsYouth" type="number" min="0" step="1" value="20">
+    </div>
+    <div>
+      <label class="field-label" for="pointsHolyHour">Holy Hour points</label>
+      <input id="pointsHolyHour" type="number" min="0" step="1" value="15">
+    </div>
+    <div>
+      <label class="field-label" for="pointsService">Service points</label>
+      <input id="pointsService" type="number" min="0" step="1" value="30">
+    </div>
+    <div>
+      <label class="field-label" for="coreMultiplier">Core multiplier</label>
+      <input id="coreMultiplier" type="number" min="1" step="0.01" value="1.25">
+    </div>
+  </div>
 </div>
 
 <div class="card">
@@ -732,6 +763,17 @@ const defaultCore = [
   "Ali Hamel","Ella Cronin","Alina Falcao","Paxton Roper"
 ];
 
+const EVENT_LABELS = {
+  rosary: "Rosary",
+  youth: "Youth Group",
+  holyHour: "Holy Hour",
+  service: "Service"
+};
+
+const POINTS_STORAGE_KEY = "st_thomas_points_settings_v1";
+let eventPoints = { rosary: 8, youth: 20, holyHour: 15, service: 30 };
+let coreMultiplier = 1.25;
+
 let presentList = [];
 let coreList = [];
 let tables = [];
@@ -751,6 +793,8 @@ function getCurrentState() {
     coreList,
     tables,
     currentMode,
+    eventPoints,
+    coreMultiplier,
     togetherGroups: document.getElementById("togetherGroups")?.value || "",
     numTables: document.getElementById("numTables")?.value || "8",
     darkMode: document.body.classList.contains("dark-mode")
@@ -788,6 +832,16 @@ function applyIncomingState(raw) {
 
   if (typeof state.currentMode === "string") {
     setMode(state.currentMode);
+  }
+
+  if (state.eventPoints && typeof state.eventPoints === "object") {
+    eventPoints = { ...eventPoints, ...state.eventPoints };
+    syncPointInputs();
+  }
+
+  if (typeof state.coreMultiplier === "number") {
+    coreMultiplier = state.coreMultiplier;
+    syncPointInputs();
   }
 
   const together = document.getElementById("togetherGroups");
@@ -1114,6 +1168,47 @@ function setupAutocomplete(
   renderSelected();
 }
 
+function loadPointSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POINTS_STORAGE_KEY) || "{}");
+    if (saved.eventPoints && typeof saved.eventPoints === "object") {
+      eventPoints = { ...eventPoints, ...saved.eventPoints };
+    }
+    if (typeof saved.coreMultiplier === "number") {
+      coreMultiplier = saved.coreMultiplier;
+    }
+  } catch {
+    // ignore invalid local settings
+  }
+}
+
+function savePointSettings() {
+  localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify({ eventPoints, coreMultiplier }));
+}
+
+function syncPointInputs() {
+  const ids = {
+    rosary: "pointsRosary",
+    youth: "pointsYouth",
+    holyHour: "pointsHolyHour",
+    service: "pointsService"
+  };
+
+  Object.entries(ids).forEach(([event, id]) => {
+    const input = document.getElementById(id);
+    if (input) input.value = String(eventPoints[event]);
+  });
+
+  const multiplierInput = document.getElementById("coreMultiplier");
+  if (multiplierInput) multiplierInput.value = String(coreMultiplier);
+}
+
+function getPointsForAttendee(name) {
+  const base = Number(eventPoints[currentMode] || 0);
+  const isCore = coreList.some(c => c.name === name);
+  return isCore ? Math.round(base * coreMultiplier) : base;
+}
+
 /* =========================
    COPY LIST
 ========================= */
@@ -1121,11 +1216,9 @@ function updateCopyList() {
   const lines = [];
 
   presentList.forEach(p => {
-    if (coreList.some(c => c.name === p.name)) {
-      lines.push(`${p.name} (CORE)`);
-    } else {
-      lines.push(p.name);
-    }
+    const isCore = coreList.some(c => c.name === p.name);
+    const points = getPointsForAttendee(p.name);
+    lines.push(`${p.name}${isCore ? " (CORE)" : ""} - ${points} pts`);
   });
 
   document.getElementById("copyList").value = lines.join("\n");
@@ -1140,9 +1233,10 @@ function updateLiveCounter() {
   const presentCount = presentList.length;
   const coreCount = coreList.length;
   const tableCount = tables.length;
+  const totalPoints = presentList.reduce((sum, person) => sum + getPointsForAttendee(person.name), 0);
 
   const counter = document.getElementById("liveCounter");
-  counter.textContent = `Present: ${presentCount}  |  Core: ${coreCount}  |  Tables: ${tableCount}`;
+  counter.textContent = `Event: ${EVENT_LABELS[currentMode]}  |  Present: ${presentCount}  |  Core: ${coreCount}  |  Tables: ${tableCount}  |  Total Points: ${totalPoints}`;
 }
 
 /* =========================
@@ -1154,7 +1248,7 @@ function exportToCSV() {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const day = String(now.getDate()).padStart(2, "0");
   const year = String(now.getFullYear()).slice(-2);
-  const filename = `youth_group_attendees_${month}_${day}_${year}.csv`;
+  const filename = `${currentMode}_attendees_${month}_${day}_${year}.csv`;
   const combined = [...presentList];
   const escapeField = value => `"${String(value).replace(/"/g, '""')}"`;
   const tableByAttendee = new Map();
@@ -1163,10 +1257,12 @@ function exportToCSV() {
     table.forEach(name => tableByAttendee.set(name, tableNumber));
   });
 
-  let csv="Name,Table Number,Notes\n";
+  let csv="Name,Event,Is Core,Points,Table Number,Notes\n";
   combined.forEach(obj=>{
     const tableNumber = tableByAttendee.get(obj.name) || "";
-    csv += `${escapeField(obj.name)},${escapeField(tableNumber)},${escapeField(obj.notes||"")}\n`;
+    const isCore = coreList.some(c => c.name === obj.name);
+    const points = getPointsForAttendee(obj.name);
+    csv += `${escapeField(obj.name)},${escapeField(EVENT_LABELS[currentMode])},${escapeField(isCore ? "Yes" : "No")},${escapeField(points)},${escapeField(tableNumber)},${escapeField(obj.notes||"")}\n`;
   });
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link=document.createElement("a");
@@ -1249,7 +1345,10 @@ function setMode(mode){
   currentMode=mode;
   document.getElementById("rosaryBtn").classList.toggle("active-mode",mode==="rosary");
   document.getElementById("youthBtn").classList.toggle("active-mode",mode==="youth");
-  document.getElementById("youthFeatures").classList.toggle("hidden",mode==="rosary");
+  document.getElementById("holyHourBtn").classList.toggle("active-mode",mode==="holyHour");
+  document.getElementById("serviceBtn").classList.toggle("active-mode",mode==="service");
+  document.getElementById("youthFeatures").classList.toggle("hidden",mode!=="youth");
+  updateCopyList();
   publishCollabState();
 }
 
@@ -1347,6 +1446,38 @@ const numTablesInput = document.getElementById("numTables");
 if (numTablesInput) {
   numTablesInput.addEventListener("input", publishCollabState);
 }
+
+const pointInputMap = {
+  pointsRosary: "rosary",
+  pointsYouth: "youth",
+  pointsHolyHour: "holyHour",
+  pointsService: "service"
+};
+
+Object.entries(pointInputMap).forEach(([id, eventName]) => {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.addEventListener("input", () => {
+    eventPoints[eventName] = Math.max(0, Number(input.value) || 0);
+    savePointSettings();
+    updateCopyList();
+    publishCollabState();
+  });
+});
+
+const coreMultiplierInput = document.getElementById("coreMultiplier");
+if (coreMultiplierInput) {
+  coreMultiplierInput.addEventListener("input", () => {
+    coreMultiplier = Math.max(1, Number(coreMultiplierInput.value) || 1);
+    savePointSettings();
+    updateCopyList();
+    publishCollabState();
+  });
+}
+
+loadPointSettings();
+syncPointInputs();
+updateCopyList();
 
 initializeAccessGate();
 
