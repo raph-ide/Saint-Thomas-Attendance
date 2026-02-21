@@ -307,6 +307,10 @@ body.dark-mode .page-link {
   flex-wrap: wrap;
 }
 
+#collabDisplayName {
+  width: 150px;
+}
+
 .collab-controls input {
   width: 170px;
   padding: 10px;
@@ -321,6 +325,24 @@ body.dark-mode .collab-controls input {
   background: #1c1c1e;
   color: #f2f2f7;
   border-color: #3a3a3c;
+}
+
+.presence-card {
+  border-left: 4px solid #007aff;
+}
+
+#presenceSummary {
+  margin: 0;
+  font-weight: 600;
+}
+
+#presenceList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+#presenceList li {
+  cursor: default;
 }
 
 /* =========================
@@ -600,11 +622,21 @@ body.locked #appContent {
   <button type="button" id="darkModeBtn" class="toggle-button" onclick="toggleDarkMode()" aria-pressed="false">Enable Dark Mode</button>
 
   <div class="collab-controls">
+    <label class="visually-hidden" for="collabDisplayName">Your name</label>
+    <input id="collabDisplayName" type="text" placeholder="Your name" autocomplete="off">
     <label class="visually-hidden" for="sessionCodeInput">Collab session code</label>
     <input id="sessionCodeInput" type="text" placeholder="Session code" autocomplete="off">
     <button type="button" id="connectSessionBtn" class="toggle-button">Connect Session</button>
     <span id="collabStatus" class="helper-text">Collab: Off</span>
   </div>
+</div>
+
+<div class="card presence-card">
+  <div class="card-header">
+    <h3>Live collaborators</h3>
+  </div>
+  <p id="presenceSummary" class="helper-text">Connect a session to see collaborators.</p>
+  <ul id="presenceList"></ul>
 </div>
 
 <div class="card">
@@ -786,6 +818,11 @@ let yProvider = null;
 let yStateMap = null;
 let collabChannel = null;
 let collabStorageKey = "";
+let collabSessionCode = "";
+let localCollabId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+let presenceHeartbeatTimer = null;
+let cleanupPresenceHandler = null;
+const COLLAB_NAME_STORAGE_KEY = "st-attendance-collab-name";
 
 function getCurrentState() {
   return {
@@ -871,6 +908,97 @@ function applyIncomingState(raw) {
   isApplyingRemoteState = false;
 }
 
+function getCollabDisplayName() {
+  const input = document.getElementById("collabDisplayName");
+  const trimmed = input?.value.trim();
+  return trimmed || localStorage.getItem(COLLAB_NAME_STORAGE_KEY) || "Anonymous";
+}
+
+function setAwarenessState() {
+  if (!yProvider) return;
+  const displayName = getCollabDisplayName();
+  localStorage.setItem(COLLAB_NAME_STORAGE_KEY, displayName);
+  yProvider.awareness.setLocalStateField("user", {
+    id: localCollabId,
+    name: displayName
+  });
+}
+
+function refreshPresenceCard() {
+  const summary = document.getElementById("presenceSummary");
+  const list = document.getElementById("presenceList");
+  if (!summary || !list) return;
+
+  if (!collabSessionCode || !yProvider) {
+    summary.textContent = "Connect a session to see collaborators.";
+    list.innerHTML = "";
+    return;
+  }
+
+  const awarenessStates = Array.from(yProvider.awareness.getStates().values());
+  const usersById = new Map();
+
+  awarenessStates.forEach(state => {
+    const user = state?.user;
+    if (!user || !user.id) return;
+    usersById.set(user.id, {
+      id: user.id,
+      name: user.name || "Anonymous"
+    });
+  });
+
+  const others = Array.from(usersById.values()).filter(user => user.id !== localCollabId);
+  if (!others.length) {
+    summary.textContent = "No one else is in this file right now.";
+    list.innerHTML = "";
+    return;
+  }
+
+  summary.textContent = `${others.length} collaborator${others.length === 1 ? "" : "s"} currently editing this file.`;
+  list.innerHTML = "";
+  others
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    .forEach(user => {
+      const item = document.createElement("li");
+      item.textContent = user.name;
+      list.appendChild(item);
+    });
+}
+
+function stopPresenceHeartbeat() {
+  if (presenceHeartbeatTimer) {
+    window.clearInterval(presenceHeartbeatTimer);
+    presenceHeartbeatTimer = null;
+  }
+  if (cleanupPresenceHandler) {
+    window.removeEventListener("beforeunload", cleanupPresenceHandler);
+    cleanupPresenceHandler = null;
+  }
+}
+
+function removeLocalPresence() {
+  if (!yProvider) return;
+  yProvider.awareness.setLocalStateField("user", null);
+  refreshPresenceCard();
+}
+
+function startPresenceHeartbeat(code) {
+  stopPresenceHeartbeat();
+  collabSessionCode = code;
+
+  setAwarenessState();
+  refreshPresenceCard();
+
+  presenceHeartbeatTimer = window.setInterval(() => {
+    if (!yProvider) return;
+    setAwarenessState();
+    refreshPresenceCard();
+  }, 5000);
+
+  cleanupPresenceHandler = () => removeLocalPresence();
+  window.addEventListener("beforeunload", cleanupPresenceHandler);
+}
+
 function connectCollabSession() {
   const codeInput = document.getElementById("sessionCodeInput");
   const status = document.getElementById("collabStatus");
@@ -881,6 +1009,7 @@ function connectCollabSession() {
     return;
   }
 
+  removeLocalPresence();
   if (collabChannel) collabChannel.close();
   collabStorageKey = `st-attendance-${code.toLowerCase()}`;
   collabChannel = new BroadcastChannel(collabStorageKey);
@@ -894,17 +1023,30 @@ function connectCollabSession() {
 
   if (window.Y && window.WebrtcProvider) {
     yDoc = new Y.Doc();
-    yProvider = new WebrtcProvider(`st-attendance-${code.toLowerCase()}`, yDoc);
+    yProvider = new WebrtcProvider(`st-attendance-${code.toLowerCase()}`, yDoc, {
+      signaling: [
+        "wss://signaling.yjs.dev",
+        "wss://y-webrtc-signaling-eu.herokuapp.com",
+        "wss://y-webrtc-signaling-us.herokuapp.com"
+      ]
+    });
     yStateMap = yDoc.getMap("attendance");
     yStateMap.observe(() => applyIncomingState(yStateMap.get("payload")));
+    yProvider.awareness.on("change", refreshPresenceCard);
   }
 
+  const existingPayload = localStorage.getItem(collabStorageKey);
+  if (existingPayload) {
+    applyIncomingState(existingPayload);
+  }
+
+  startPresenceHeartbeat(code);
   publishCollabState();
 
   if (status) {
     status.textContent = yStateMap
       ? `Collab: Connected (${code})`
-      : `Collab: Connected (${code}) - local browser sync only`;
+      : `Collab: Connected (${code}) - failed to start internet sync`;
   }
 }
 
@@ -1431,10 +1573,22 @@ if (sessionCodeInput) {
   });
 }
 
+const collabDisplayNameInput = document.getElementById("collabDisplayName");
+if (collabDisplayNameInput) {
+  collabDisplayNameInput.addEventListener("input", () => {
+    if (collabSessionCode) {
+      localStorage.setItem(COLLAB_NAME_STORAGE_KEY, getCollabDisplayName());
+      setAwarenessState();
+      refreshPresenceCard();
+    }
+  });
+}
+
 window.addEventListener("storage", event => {
   if (collabStorageKey && event.key === collabStorageKey && event.newValue) {
     applyIncomingState(event.newValue);
   }
+
 });
 
 const togetherGroupsInput = document.getElementById("togetherGroups");
@@ -1475,9 +1629,16 @@ if (coreMultiplierInput) {
   });
 }
 
+const savedCollabName = localStorage.getItem(COLLAB_NAME_STORAGE_KEY);
+if (savedCollabName) {
+  const collabNameInput = document.getElementById("collabDisplayName");
+  if (collabNameInput) collabNameInput.value = savedCollabName;
+}
+
 loadPointSettings();
 syncPointInputs();
 updateCopyList();
+refreshPresenceCard();
 
 initializeAccessGate();
 
