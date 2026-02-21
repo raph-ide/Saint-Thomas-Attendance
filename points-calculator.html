@@ -120,6 +120,41 @@ th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: v
   <p class="subtitle">Create tabs by date, set event type + points per tab, upload a CSV, and adjust points (+/-) per attendee.</p>
   <p class="small"><a href="index.html">← Back to Attendance</a></p>
 
+
+  <section class="card">
+    <h3 style="margin-top:0;">Account (Optional)</h3>
+    <p class="small">Create an account to keep your calculator data tied to a login on this browser.</p>
+    <div class="grid">
+      <div>
+        <label for="accountEmail">Email</label>
+        <input id="accountEmail" type="email" placeholder="name@example.com" />
+      </div>
+      <div>
+        <label for="accountPassword">Password</label>
+        <input id="accountPassword" type="password" placeholder="Password" />
+      </div>
+    </div>
+    <div class="grid" style="margin-top:12px;">
+      <div>
+        <label for="supabaseUrl">Supabase URL (for cross-browser sync)</label>
+        <input id="supabaseUrl" type="text" placeholder="https://YOUR-PROJECT.supabase.co" />
+      </div>
+      <div>
+        <label for="supabaseAnonKey">Supabase Anon Key</label>
+        <input id="supabaseAnonKey" type="password" placeholder="eyJ..." />
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:12px;">
+      <button type="button" id="saveCloudConfigBtn">Save Cloud Config</button>
+      <button type="button" id="createAccountBtn">Create Account</button>
+      <button type="button" class="secondary" id="loginBtn">Login</button>
+      <button type="button" class="ghost" id="useGuestBtn">Use as Guest</button>
+      <button type="button" class="danger" id="logoutBtn">Logout</button>
+    </div>
+    <p id="accountStatus" class="small">Not logged in. Data saves to this browser as guest.</p>
+    <p id="cloudStatus" class="small">Cloud sync: Off (configure Supabase for cross-browser sync).</p>
+  </section>
+
   <section class="card">
     <h3 style="margin-top:0;">Global Settings</h3>
     <div class="grid">
@@ -146,7 +181,7 @@ th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: v
     </div>
     <div style="margin-top:12px;">
       <label for="coreNames">Core members (one per line)</label>
-      <textarea id="coreNames" rows="4" placeholder="Enter Core here"></textarea>
+      <textarea id="coreNames" rows="4" placeholder="Raphael Ide\nGigi Arico"></textarea>
     </div>
   </section>
 
@@ -160,11 +195,238 @@ th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: v
 
   <section id="tabPanels"></section>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const STORAGE_KEY = "st_thomas_points_tabs_v2";
+const ACCOUNT_STORE_KEY = "st_thomas_points_accounts_v1";
+const ACTIVE_ACCOUNT_KEY = "st_thomas_points_active_account_v1";
+const CLOUD_CONFIG_KEY = "st_thomas_points_cloud_config_v1";
+const CLOUD_USER_ID_KEY = "st_thomas_points_cloud_user_id_v1";
 const EVENT_OPTIONS = ["Rosary", "Youth Group", "Holy Hour", "Service", "Custom"];
 const tabsState = [];
 let activeTabId = null;
+let currentAccountEmail = localStorage.getItem(ACTIVE_ACCOUNT_KEY) || "";
+let currentCloudUserId = localStorage.getItem(CLOUD_USER_ID_KEY) || "";
+let supabaseClient = null;
+
+function getAccounts() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(ACCOUNT_STORE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAccounts(accounts) {
+  localStorage.setItem(ACCOUNT_STORE_KEY, JSON.stringify(accounts));
+}
+
+function getCloudConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "{}");
+    return {
+      url: (saved.url || "").trim(),
+      anonKey: (saved.anonKey || "").trim()
+    };
+  } catch {
+    return { url: "", anonKey: "" };
+  }
+}
+
+function setCloudStatus(message) {
+  const status = document.getElementById("cloudStatus");
+  if (status) status.textContent = message;
+}
+
+function initializeSupabaseClient() {
+  const { url, anonKey } = getCloudConfig();
+  if (!url || !anonKey || !window.supabase || !window.supabase.createClient) {
+    supabaseClient = null;
+    setCloudStatus("Cloud sync: Off (configure Supabase for cross-browser sync).");
+    return false;
+  }
+  supabaseClient = window.supabase.createClient(url, anonKey);
+  setCloudStatus("Cloud sync: Ready.");
+  return true;
+}
+
+function saveCloudConfig() {
+  const url = (document.getElementById("supabaseUrl").value || "").trim();
+  const anonKey = (document.getElementById("supabaseAnonKey").value || "").trim();
+  localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify({ url, anonKey }));
+  const ok = initializeSupabaseClient();
+  setAccountStatus(ok ? "Cloud config saved." : "Saved config, but cloud client is not ready.");
+}
+
+async function saveCloudPayload(payload) {
+  if (!supabaseClient || !currentCloudUserId) return;
+  const { error } = await supabaseClient
+    .from("calculator_states")
+    .upsert({ user_id: currentCloudUserId, payload, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) {
+    setCloudStatus(`Cloud sync error: ${error.message}`);
+  }
+}
+
+async function loadCloudPayload() {
+  if (!supabaseClient || !currentCloudUserId) return null;
+  const { data, error } = await supabaseClient
+    .from("calculator_states")
+    .select("payload")
+    .eq("user_id", currentCloudUserId)
+    .maybeSingle();
+  if (error) {
+    setCloudStatus(`Cloud load error: ${error.message}`);
+    return null;
+  }
+  return data?.payload || null;
+}
+
+function getScopedPayload() {
+  if (!currentAccountEmail) {
+    return localStorage.getItem(STORAGE_KEY);
+  }
+  const accounts = getAccounts();
+  return accounts[currentAccountEmail]?.payload || null;
+}
+
+function setScopedPayload(payload) {
+  if (currentCloudUserId) {
+    localStorage.setItem(STORAGE_KEY, payload);
+    saveCloudPayload(payload);
+    return;
+  }
+  if (!currentAccountEmail) {
+    localStorage.setItem(STORAGE_KEY, payload);
+    return;
+  }
+  const accounts = getAccounts();
+  if (!accounts[currentAccountEmail]) return;
+  accounts[currentAccountEmail].payload = payload;
+  saveAccounts(accounts);
+}
+
+function setAccountStatus(message) {
+  const status = document.getElementById("accountStatus");
+  if (status) status.textContent = message;
+}
+
+function resetCalculatorState() {
+  tabsState.splice(0, tabsState.length);
+  activeTabId = null;
+}
+
+async function createAccount() {
+  const email = (document.getElementById("accountEmail").value || "").trim().toLowerCase();
+  const password = document.getElementById("accountPassword").value || "";
+  if (!email || !password) {
+    setAccountStatus("Enter email and password to create an account.");
+    return;
+  }
+
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) {
+      setAccountStatus(`Cloud signup failed: ${error.message}`);
+      return;
+    }
+    currentAccountEmail = email;
+    currentCloudUserId = data.user?.id || "";
+    localStorage.setItem(ACTIVE_ACCOUNT_KEY, currentAccountEmail);
+    localStorage.setItem(CLOUD_USER_ID_KEY, currentCloudUserId);
+    setAccountStatus(`Cloud account created for ${email}.`);
+    resetCalculatorState();
+    await loadStateFromCloud();
+    if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+    renderTabs();
+    renderOverall();
+    return;
+  }
+
+  const accounts = getAccounts();
+  if (accounts[email]) {
+    setAccountStatus("That account already exists. Please login.");
+    return;
+  }
+  accounts[email] = { password, payload: null };
+  saveAccounts(accounts);
+  currentAccountEmail = email;
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, currentAccountEmail);
+  setAccountStatus(`Account created and logged in as ${email}.`);
+  resetCalculatorState();
+  loadState();
+  if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+  renderTabs();
+  renderOverall();
+}
+
+async function loginAccount() {
+  const email = (document.getElementById("accountEmail").value || "").trim().toLowerCase();
+  const password = document.getElementById("accountPassword").value || "";
+
+  if (supabaseClient) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      setAccountStatus(`Cloud login failed: ${error.message}`);
+      return;
+    }
+    currentAccountEmail = email;
+    currentCloudUserId = data.user?.id || "";
+    localStorage.setItem(ACTIVE_ACCOUNT_KEY, currentAccountEmail);
+    localStorage.setItem(CLOUD_USER_ID_KEY, currentCloudUserId);
+    setAccountStatus(`Logged in with cloud as ${email}.`);
+    resetCalculatorState();
+    await loadStateFromCloud();
+    if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+    renderTabs();
+    renderOverall();
+    return;
+  }
+
+  const accounts = getAccounts();
+  if (!accounts[email] || accounts[email].password !== password) {
+    setAccountStatus("Invalid email/password.");
+    return;
+  }
+  currentAccountEmail = email;
+  localStorage.setItem(ACTIVE_ACCOUNT_KEY, currentAccountEmail);
+  setAccountStatus(`Logged in as ${email}.`);
+  resetCalculatorState();
+  loadState();
+  if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+  renderTabs();
+  renderOverall();
+}
+
+function useGuestMode() {
+  currentAccountEmail = "";
+  currentCloudUserId = "";
+  localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
+  localStorage.removeItem(CLOUD_USER_ID_KEY);
+  setAccountStatus("Using guest mode on this browser.");
+  resetCalculatorState();
+  loadState();
+  if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+  renderTabs();
+  renderOverall();
+}
+
+async function logoutAccount() {
+  if (supabaseClient) {
+    await supabaseClient.auth.signOut();
+  }
+  currentAccountEmail = "";
+  currentCloudUserId = "";
+  localStorage.removeItem(ACTIVE_ACCOUNT_KEY);
+  localStorage.removeItem(CLOUD_USER_ID_KEY);
+  setAccountStatus("Logged out. Using guest mode.");
+  resetCalculatorState();
+  loadState();
+  if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+  renderTabs();
+  renderOverall();
+}
 
 function getDefaultPointsByEvent() {
   return {
@@ -576,12 +838,19 @@ function saveState() {
     tabsState,
     activeTabId
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  setScopedPayload(JSON.stringify(payload));
+}
+
+async function loadStateFromCloud() {
+  const raw = await loadCloudPayload();
+  if (!raw) return;
+  localStorage.setItem(STORAGE_KEY, raw);
+  loadState();
 }
 
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = getScopedPayload();
     if (!raw) return;
     const saved = JSON.parse(raw);
 
@@ -611,6 +880,7 @@ function loadState() {
 }
 
 document.getElementById("addDateTabBtn").addEventListener("click", () => createTab());
+document.getElementById("saveCloudConfigBtn").addEventListener("click", saveCloudConfig);
 
 ["defaultRosary", "defaultYouth", "defaultHolyHour", "defaultService", "coreMultiplier", "coreNames"].forEach(id => {
   document.getElementById(id).addEventListener("input", () => {
@@ -621,11 +891,34 @@ document.getElementById("addDateTabBtn").addEventListener("click", () => createT
   });
 });
 
+document.getElementById("createAccountBtn").addEventListener("click", createAccount);
+document.getElementById("loginBtn").addEventListener("click", loginAccount);
+document.getElementById("useGuestBtn").addEventListener("click", useGuestMode);
+document.getElementById("logoutBtn").addEventListener("click", logoutAccount);
+
+const cloudDefaults = getCloudConfig();
+document.getElementById("supabaseUrl").value = cloudDefaults.url;
+document.getElementById("supabaseAnonKey").value = cloudDefaults.anonKey;
+initializeSupabaseClient();
+
+if (currentAccountEmail) {
+  setAccountStatus(`Logged in as ${currentAccountEmail}.`);
+} else {
+  setAccountStatus("Not logged in. Data saves to this browser as guest.");
+}
+
 loadState();
+if (supabaseClient && currentCloudUserId) {
+  loadStateFromCloud().then(() => {
+    if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
+    renderTabs();
+    renderOverall();
+  });
+}
+
 if (!tabsState.length) createTab({ date: new Date().toISOString().slice(0, 10), eventType: "Youth Group" });
 renderTabs();
 renderOverall();
 </script>
 </body>
 </html>
-
