@@ -160,22 +160,6 @@ th { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: v
 
   <section id="tabPanels"></section>
 
-  <section class="card">
-    <h3 style="margin-top:0;">Overall Totals (All Date Tabs)</h3>
-    <p class="small">This sums points from every date tab.</p>
-    <div class="toolbar">
-      <button type="button" class="secondary" id="downloadOverallBtn">Download Overall CSV</button>
-    </div>
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th><th>Total Points</th><th>Per-Date Breakdown</th>
-        </tr>
-      </thead>
-      <tbody id="overallBody"></tbody>
-    </table>
-  </section>
-
 <script>
 const STORAGE_KEY = "st_thomas_points_tabs_v2";
 const EVENT_OPTIONS = ["Rosary", "Youth Group", "Holy Hour", "Service", "Custom"];
@@ -393,7 +377,15 @@ function renderTabs() {
     btn.textContent = tab.date || "New Date";
     btn.addEventListener("click", () => switchTab(tab.id));
     tabsWrap.appendChild(btn);
+  });
 
+  const overallBtn = document.createElement("button");
+  overallBtn.className = `tab-btn ${activeTabId === "overall" ? "active" : ""}`;
+  overallBtn.textContent = "Overall Totals";
+  overallBtn.addEventListener("click", () => switchTab("overall"));
+  tabsWrap.appendChild(overallBtn);
+
+  tabsState.forEach(tab => {
     const panel = document.createElement("section");
     panel.className = `card tab-panel ${tab.id === activeTabId ? "active" : ""}`;
 
@@ -481,6 +473,29 @@ function renderTabs() {
     document.getElementById(`download-${tab.id}`).addEventListener("click", () => downloadTabCSV(tab.id));
     document.getElementById(`delete-${tab.id}`).addEventListener("click", () => removeTab(tab.id));
   });
+
+  const overallPanel = document.createElement("section");
+  overallPanel.className = `card tab-panel ${activeTabId === "overall" ? "active" : ""}`;
+  overallPanel.innerHTML = `
+    <h3 style="margin-top:0;">Overall Totals (All Date Tabs)</h3>
+    <p class="small">This sums points from every date tab.</p>
+    <div class="toolbar">
+      <button type="button" class="secondary" id="downloadOverallBtn">Download Overall CSV</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th><th>Total Points</th><th>Per-Date Breakdown</th>
+        </tr>
+      </thead>
+      <tbody id="overallBody"></tbody>
+    </table>
+  `;
+  panelsWrap.appendChild(overallPanel);
+  const downloadOverallBtn = document.getElementById("downloadOverallBtn");
+  if (downloadOverallBtn) {
+    downloadOverallBtn.addEventListener("click", downloadOverallCSV);
+  }
 
   panelsWrap.querySelectorAll("[data-field]").forEach(el => {
     el.addEventListener("input", event => {
@@ -596,7 +611,6 @@ function loadState() {
 }
 
 document.getElementById("addDateTabBtn").addEventListener("click", () => createTab());
-document.getElementById("downloadOverallBtn").addEventListener("click", downloadOverallCSV);
 
 ["defaultRosary", "defaultYouth", "defaultHolyHour", "defaultService", "coreMultiplier", "coreNames"].forEach(id => {
   document.getElementById(id).addEventListener("input", () => {
