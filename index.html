@@ -736,13 +736,16 @@ body.locked #appContent {
 </div>
 
 <div class="footer-text">
-   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers-3.pdf?t=1771704617000">here</a> to see the current point standings!!
+   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers.pdf?t=1770505299000">here</a> to see the current point standings!!
 </div>
 
 </div>
 
 <script src="https://unpkg.com/yjs@13.6.18/dist/yjs.js"></script>
 <script src="https://unpkg.com/y-websocket@1.5.3/dist/y-websocket.js"></script>
+<script src="https://unpkg.com/y-webrtc@10.3.0/dist/y-webrtc.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 
 <script>
 /* =========================
@@ -816,8 +819,9 @@ let currentMode = 'youth';
 const listRenderers = {};
 let isApplyingRemoteState = false;
 let yDoc = null;
-let yProvider = null;
+let yProviders = [];
 let yStateMap = null;
+let awarenessUnsubscribers = [];
 let collabChannel = null;
 let collabStorageKey = "";
 let collabSessionCode = "";
@@ -828,6 +832,10 @@ let localCollabId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 let presenceHeartbeatTimer = null;
 let cleanupPresenceHandler = null;
 let latestStateTimestamp = 0;
+let firebaseApp = null;
+let firebaseDb = null;
+let firebaseSessionRef = null;
+let firebaseUnsubscribe = null;
 const COLLAB_NAME_STORAGE_KEY = "st-attendance-collab-name";
 const PBKDF2_ITERATIONS = 250000;
 
@@ -932,6 +940,43 @@ async function decryptCollabPayload(raw) {
   return new TextDecoder().decode(decrypted);
 }
 
+function getFirebaseConfig() {
+  const runtimeConfig = window.ST_ATTENDANCE_FIREBASE_CONFIG;
+  if (runtimeConfig && typeof runtimeConfig === "object") return runtimeConfig;
+
+  return {
+    apiKey: "",
+    authDomain: "",
+    databaseURL: "",
+    projectId: "",
+    appId: ""
+  };
+}
+
+function initializeFirebaseBackend() {
+  if (!window.firebase) return false;
+  const config = getFirebaseConfig();
+  if (!config.apiKey || !config.databaseURL || !config.projectId || !config.appId) {
+    return false;
+  }
+
+  if (!firebaseApp) {
+    firebaseApp = firebase.apps?.length ? firebase.app() : firebase.initializeApp(config);
+  }
+  if (!firebaseDb) {
+    firebaseDb = firebase.database(firebaseApp);
+  }
+  return true;
+}
+
+function stopFirebaseSubscription() {
+  if (firebaseUnsubscribe) {
+    firebaseUnsubscribe();
+    firebaseUnsubscribe = null;
+  }
+  firebaseSessionRef = null;
+}
+
 async function publishCollabState() {
   if (isApplyingRemoteState) return;
   const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
@@ -940,6 +985,13 @@ async function publishCollabState() {
   if (yStateMap) yStateMap.set("payload", securedPayload);
   if (collabChannel) collabChannel.postMessage(securedPayload);
   if (collabStorageKey) localStorage.setItem(collabStorageKey, securedPayload);
+  if (firebaseSessionRef) {
+    await firebaseSessionRef.set({
+      payload: securedPayload,
+      updatedAt: Date.now(),
+      author: localCollabId
+    });
+  }
 }
 
 async function applyIncomingState(raw) {
@@ -1026,12 +1078,14 @@ function getCollabDisplayName() {
 }
 
 function setAwarenessState() {
-  if (!yProvider) return;
+  if (!yProviders.length) return;
   const displayName = getCollabDisplayName();
   localStorage.setItem(COLLAB_NAME_STORAGE_KEY, displayName);
-  yProvider.awareness.setLocalStateField("user", {
-    id: localCollabId,
-    name: displayName
+  yProviders.forEach(provider => {
+    provider.awareness.setLocalStateField("user", {
+      id: localCollabId,
+      name: displayName
+    });
   });
 }
 
@@ -1040,13 +1094,13 @@ function refreshPresenceCard() {
   const list = document.getElementById("presenceList");
   if (!summary || !list) return;
 
-  if (!collabSessionCode || !yProvider) {
+  if (!collabSessionCode || !yProviders.length) {
     summary.textContent = "Connect a session to see collaborators.";
     list.innerHTML = "";
     return;
   }
 
-  const awarenessStates = Array.from(yProvider.awareness.getStates().values());
+  const awarenessStates = yProviders.flatMap(provider => Array.from(provider.awareness.getStates().values()));
   const usersById = new Map();
 
   awarenessStates.forEach(state => {
@@ -1088,8 +1142,8 @@ function stopPresenceHeartbeat() {
 }
 
 function removeLocalPresence() {
-  if (!yProvider) return;
-  yProvider.awareness.setLocalStateField("user", null);
+  if (!yProviders.length) return;
+  yProviders.forEach(provider => provider.awareness.setLocalStateField("user", null));
   refreshPresenceCard();
 }
 
@@ -1101,7 +1155,7 @@ function startPresenceHeartbeat(code) {
   refreshPresenceCard();
 
   presenceHeartbeatTimer = window.setInterval(() => {
-    if (!yProvider) return;
+    if (!yProviders.length) return;
     setAwarenessState();
     refreshPresenceCard();
   }, 5000);
@@ -1135,23 +1189,65 @@ async function connectCollabSession() {
   collabChannel = new BroadcastChannel(collabStorageKey);
   collabChannel.onmessage = event => queueApplyIncomingState(event.data);
 
-  if (yProvider) yProvider.destroy();
+  awarenessUnsubscribers.forEach(unsub => unsub());
+  awarenessUnsubscribers = [];
+  yProviders.forEach(provider => provider.destroy());
   if (yDoc) yDoc.destroy();
-  yProvider = null;
+  yProviders = [];
   yDoc = null;
   yStateMap = null;
   latestStateTimestamp = 0;
+  stopFirebaseSubscription();
 
   collabSaltBase64 = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
   collabCryptoKeyPromise = deriveSessionKey(secret, base64ToBytes(collabSaltBase64));
 
-
-  if (window.Y && window.WebsocketProvider) {
+  if (window.Y) {
     yDoc = new Y.Doc();
-    yProvider = new WebsocketProvider("wss://demos.yjs.dev", collabStorageKey, yDoc);
+
+    if (window.WebsocketProvider) {
+      const wsProvider = new WebsocketProvider("wss://demos.yjs.dev", collabStorageKey, yDoc);
+      yProviders.push(wsProvider);
+      wsProvider.on("status", event => {
+        if (status && event?.status) {
+          const wsText = event.status === "connected" ? "online" : "reconnecting";
+          status.textContent = `Collab: ${wsText} (${code})`;
+        }
+      });
+    }
+
+    if (window.WebrtcProvider) {
+      const rtcProvider = new WebrtcProvider(collabStorageKey, yDoc, {
+        signaling: [
+          "wss://signaling.yjs.dev",
+          "wss://y-webrtc-signaling-eu.herokuapp.com",
+          "wss://y-webrtc-signaling-us.herokuapp.com"
+        ]
+      });
+      yProviders.push(rtcProvider);
+    }
+
     yStateMap = yDoc.getMap("attendance");
     yStateMap.observe(() => queueApplyIncomingState(yStateMap.get("payload")));
-    yProvider.awareness.on("change", refreshPresenceCard);
+
+    yProviders.forEach(provider => {
+      const awarenessHandler = () => refreshPresenceCard();
+      provider.awareness.on("change", awarenessHandler);
+      awarenessUnsubscribers.push(() => provider.awareness.off("change", awarenessHandler));
+    });
+  }
+
+  if (initializeFirebaseBackend()) {
+    firebaseSessionRef = firebaseDb.ref(`sessions/${collabStorageKey}`);
+    const firebaseHandler = snapshot => {
+      const value = snapshot.val();
+      if (!value?.payload) return;
+      if (value.author === localCollabId) return;
+      queueApplyIncomingState(value.payload);
+    };
+    firebaseSessionRef.on("value", firebaseHandler);
+    firebaseUnsubscribe = () => firebaseSessionRef?.off("value", firebaseHandler);
+    if (status) status.textContent = `Collab: Firebase + P2P connected (${code})`;
   }
 
   const existingPayload = localStorage.getItem(collabStorageKey);
@@ -1162,10 +1258,10 @@ async function connectCollabSession() {
   startPresenceHeartbeat(code);
   await publishCollabState();
 
-  if (status) {
-    status.textContent = yStateMap
-      ? `Collab: Securely connected (${code})`
-      : `Collab: Local secure sync only (${code})`;
+  if (status && !yProviders.length && !firebaseSessionRef) {
+    status.textContent = `Collab: Local secure sync only (${code})`;
+  } else if (status && firebaseSessionRef) {
+    status.textContent = `Collab: Firebase-backed sync active (${code})`;
   }
 }
 
@@ -1768,6 +1864,8 @@ loadPointSettings();
 syncPointInputs();
 updateCopyList();
 refreshPresenceCard();
+
+window.addEventListener("beforeunload", () => stopFirebaseSubscription());
 
 initializeAccessGate();
 
