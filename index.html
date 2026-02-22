@@ -626,6 +626,8 @@ body.locked #appContent {
     <input id="collabDisplayName" type="text" placeholder="Your name" autocomplete="off">
     <label class="visually-hidden" for="sessionCodeInput">Collab session code</label>
     <input id="sessionCodeInput" type="text" placeholder="Session code" autocomplete="off">
+    <label class="visually-hidden" for="sessionKeyInput">Collab secret key</label>
+    <input id="sessionKeyInput" type="password" placeholder="Secret key" autocomplete="off">
     <button type="button" id="connectSessionBtn" class="toggle-button">Connect Session</button>
     <span id="collabStatus" class="helper-text">Collab: Off</span>
   </div>
@@ -734,13 +736,13 @@ body.locked #appContent {
 </div>
 
 <div class="footer-text">
-   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers-3.pdf?t=1771704617000">here</a> to see the current point standings!!
+   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers.pdf?t=1770505299000">here</a> to see the current point standings!!
 </div>
 
 </div>
 
 <script src="https://unpkg.com/yjs@13.6.18/dist/yjs.js"></script>
-<script src="https://unpkg.com/y-webrtc@10.3.0/dist/y-webrtc.js"></script>
+<script src="https://unpkg.com/y-websocket@1.5.3/dist/y-websocket.js"></script>
 
 <script>
 /* =========================
@@ -819,10 +821,15 @@ let yStateMap = null;
 let collabChannel = null;
 let collabStorageKey = "";
 let collabSessionCode = "";
+let collabSessionRoom = "";
+let collabCryptoKeyPromise = null;
+let collabSaltBase64 = "";
 let localCollabId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 let presenceHeartbeatTimer = null;
 let cleanupPresenceHandler = null;
+let latestStateTimestamp = 0;
 const COLLAB_NAME_STORAGE_KEY = "st-attendance-collab-name";
+const PBKDF2_ITERATIONS = 250000;
 
 function getCurrentState() {
   return {
@@ -838,22 +845,119 @@ function getCurrentState() {
   };
 }
 
-function publishCollabState() {
-  if (isApplyingRemoteState) return;
-  const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
-  if (yStateMap) yStateMap.set("payload", payload);
-  if (collabChannel) collabChannel.postMessage(payload);
-  if (collabStorageKey) localStorage.setItem(collabStorageKey, payload);
+function bytesToBase64(bytes) {
+  return btoa(String.fromCharCode(...bytes));
 }
 
-function applyIncomingState(raw) {
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+async function sha256Hex(value) {
+  const data = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map(byte => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function deriveSessionKey(secret, saltBytes) {
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: saltBytes,
+      iterations: PBKDF2_ITERATIONS,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptCollabPayload(plaintext) {
+  if (!collabCryptoKeyPromise || !collabSaltBase64) return plaintext;
+
+  const cryptoKey = await collabCryptoKeyPromise;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    cryptoKey,
+    new TextEncoder().encode(plaintext)
+  );
+
+  return JSON.stringify({
+    v: 1,
+    s: collabSaltBase64,
+    i: bytesToBase64(iv),
+    d: bytesToBase64(new Uint8Array(encrypted))
+  });
+}
+
+async function decryptCollabPayload(raw) {
+  if (!raw) return null;
+
+  let envelope;
+  try {
+    envelope = JSON.parse(raw);
+  } catch {
+    return raw;
+  }
+
+  if (!envelope || envelope.v !== 1 || !envelope.s || !envelope.i || !envelope.d) {
+    return raw;
+  }
+
+  const secretInput = document.getElementById("sessionKeyInput");
+  const secret = secretInput?.value.trim();
+  if (!secret) return null;
+
+  const key = await deriveSessionKey(secret, base64ToBytes(envelope.s));
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(envelope.i) },
+    key,
+    base64ToBytes(envelope.d)
+  );
+
+  return new TextDecoder().decode(decrypted);
+}
+
+async function publishCollabState() {
+  if (isApplyingRemoteState) return;
+  const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
+  const securedPayload = await encryptCollabPayload(payload);
+
+  if (yStateMap) yStateMap.set("payload", securedPayload);
+  if (collabChannel) collabChannel.postMessage(securedPayload);
+  if (collabStorageKey) localStorage.setItem(collabStorageKey, securedPayload);
+}
+
+async function applyIncomingState(raw) {
   if (!raw) return;
+
+  const decoded = await decryptCollabPayload(raw);
+  if (!decoded) return;
+
   let state;
   try {
-    state = JSON.parse(raw);
+    state = JSON.parse(decoded);
   } catch {
     return;
   }
+
+  const timestamp = Number(state.updatedAt) || 0;
+  if (timestamp && timestamp < latestStateTimestamp) return;
+  if (timestamp) latestStateTimestamp = timestamp;
 
   isApplyingRemoteState = true;
 
@@ -906,6 +1010,13 @@ function applyIncomingState(raw) {
   updateCopyList();
 
   isApplyingRemoteState = false;
+}
+
+function queueApplyIncomingState(raw) {
+  applyIncomingState(raw).catch(() => {
+    const status = document.getElementById("collabStatus");
+    if (status) status.textContent = "Collab: Unable to decrypt incoming update";
+  });
 }
 
 function getCollabDisplayName() {
@@ -999,54 +1110,62 @@ function startPresenceHeartbeat(code) {
   window.addEventListener("beforeunload", cleanupPresenceHandler);
 }
 
-function connectCollabSession() {
+async function connectCollabSession() {
   const codeInput = document.getElementById("sessionCodeInput");
+  const secretInput = document.getElementById("sessionKeyInput");
   const status = document.getElementById("collabStatus");
   const code = codeInput?.value.trim();
+  const secret = secretInput?.value.trim();
 
   if (!code) {
     if (status) status.textContent = "Collab: Enter a session code";
     return;
   }
 
+  if (!secret || secret.length < 8) {
+    if (status) status.textContent = "Collab: Secret key must be at least 8 characters";
+    return;
+  }
+
   removeLocalPresence();
   if (collabChannel) collabChannel.close();
-  collabStorageKey = `st-attendance-${code.toLowerCase()}`;
+
+  collabSessionRoom = await sha256Hex(`st-room-${code.toLowerCase()}`);
+  collabStorageKey = `st-attendance-${collabSessionRoom.slice(0, 24)}`;
   collabChannel = new BroadcastChannel(collabStorageKey);
-  collabChannel.onmessage = event => applyIncomingState(event.data);
+  collabChannel.onmessage = event => queueApplyIncomingState(event.data);
 
   if (yProvider) yProvider.destroy();
   if (yDoc) yDoc.destroy();
   yProvider = null;
   yDoc = null;
   yStateMap = null;
+  latestStateTimestamp = 0;
 
-  if (window.Y && window.WebrtcProvider) {
+  collabSaltBase64 = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
+  collabCryptoKeyPromise = deriveSessionKey(secret, base64ToBytes(collabSaltBase64));
+
+
+  if (window.Y && window.WebsocketProvider) {
     yDoc = new Y.Doc();
-    yProvider = new WebrtcProvider(`st-attendance-${code.toLowerCase()}`, yDoc, {
-      signaling: [
-        "wss://signaling.yjs.dev",
-        "wss://y-webrtc-signaling-eu.herokuapp.com",
-        "wss://y-webrtc-signaling-us.herokuapp.com"
-      ]
-    });
+    yProvider = new WebsocketProvider("wss://demos.yjs.dev", collabStorageKey, yDoc);
     yStateMap = yDoc.getMap("attendance");
-    yStateMap.observe(() => applyIncomingState(yStateMap.get("payload")));
+    yStateMap.observe(() => queueApplyIncomingState(yStateMap.get("payload")));
     yProvider.awareness.on("change", refreshPresenceCard);
   }
 
   const existingPayload = localStorage.getItem(collabStorageKey);
   if (existingPayload) {
-    applyIncomingState(existingPayload);
+    queueApplyIncomingState(existingPayload);
   }
 
   startPresenceHeartbeat(code);
-  publishCollabState();
+  await publishCollabState();
 
   if (status) {
     status.textContent = yStateMap
-      ? `Collab: Connected (${code})`
-      : `Collab: Connected (${code}) - failed to start internet sync`;
+      ? `Collab: Securely connected (${code})`
+      : `Collab: Local secure sync only (${code})`;
   }
 }
 
@@ -1573,6 +1692,16 @@ if (sessionCodeInput) {
   });
 }
 
+const sessionKeyInput = document.getElementById("sessionKeyInput");
+if (sessionKeyInput) {
+  sessionKeyInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      connectCollabSession();
+    }
+  });
+}
+
 const collabDisplayNameInput = document.getElementById("collabDisplayName");
 if (collabDisplayNameInput) {
   collabDisplayNameInput.addEventListener("input", () => {
@@ -1586,7 +1715,7 @@ if (collabDisplayNameInput) {
 
 window.addEventListener("storage", event => {
   if (collabStorageKey && event.key === collabStorageKey && event.newValue) {
-    applyIncomingState(event.newValue);
+    queueApplyIncomingState(event.newValue);
   }
 
 });
