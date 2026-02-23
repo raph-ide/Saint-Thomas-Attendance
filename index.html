@@ -348,22 +348,19 @@ body.dark-mode .collab-controls input {
 /* =========================
    AUTOCOMPLETE
 ========================= */
-.autocomplete-box {
-  position: relative;
-}
+.autocomplete-box { position: relative; }
 
 .suggestions {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(100% + 6px);
+  width: 100%;
+  margin-top: 6px;
   background: white;
-  border: 1px solid #d1d1d6;
   border-radius: 12px;
-  max-height: 220px;
+  max-height: 180px;
   overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12);
   z-index: 20;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
 .suggestion-item {
@@ -373,163 +370,177 @@ body.dark-mode .collab-controls input {
 
 .suggestion-item:hover,
 .suggestion-item.active {
-  background: #e5f1ff;
-}
-
-.selected-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #f3f4f7;
-  border: 1px solid #d8d8dd;
-  padding: 8px 10px;
-  border-radius: 999px;
-  margin: 8px 8px 0 0;
-}
-
-.selected-pill span {
-  color: #d93025;
-  font-weight: 700;
-  cursor: pointer;
+  background: #e9f2ff;
 }
 
 /* =========================
-   NOTES
+   SELECTED PILLS
 ========================= */
-.note-toggle {
+.selected-pill {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 4px;
+  border-radius: 20px;
+  background: #f2f2f7;
+  border: 1px solid #d1d1d6;
+}
+
+.selected-pill span {
   margin-left: 8px;
-  margin-top: 8px;
-  width: 36px;
-  min-width: 36px;
-  padding: 8px 0;
-  border-radius: 10px;
-  font-size: 12px;
+  color: #ff3b30;
+  cursor: pointer;
+  font-weight: bold;
 }
 
 .note-box {
-  margin-top: 8px;
-  min-height: 74px;
+  width: 100%;
+  margin: 6px 0 12px;
+  padding: 8px;
+  border-radius: 10px;
+  border: 1px solid #d1d1d6;
   resize: vertical;
-  transition: max-height 0.18s ease, opacity 0.18s ease;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
 }
 
 .note-box.collapsed {
   max-height: 0;
-  min-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-width: 0;
   opacity: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  overflow: hidden;
   pointer-events: none;
+}
+
+.note-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 4px 0 10px;
+  border-radius: 50%;
+  border: 1px solid #d1d1d6;
+  background: #f2f2f7;
+  color: #3a3a3c;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: none;
+  padding: 0;
+}
+
+.note-toggle:hover {
+  background: #e5e5ea;
+  transform: none;
+  box-shadow: none;
+}
+
+.together-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.together-buttons button {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f2f2f7;
+  color: #3a3a3c;
+  border: 1px solid #d1d1d6;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.together-buttons button:hover {
+  transform: none;
+  background: #e9f2ff;
+}
+
+body.dark-mode .together-buttons button {
+  background: #3a3a3c;
+  border-color: #48484a;
+  color: #f2f2f7;
+}
+
+body.dark-mode .together-buttons button:hover {
+  background: #2f4b76;
+}
+
+body.dark-mode .note-toggle {
+  background: #3a3a3c;
+  border-color: #48484a;
+  color: #f2f2f7;
+}
+
+body.dark-mode .note-toggle:hover {
+  background: #48484a;
 }
 
 /* =========================
    TABLES
 ========================= */
-.controls-inline {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.controls-inline input {
-  width: 120px;
-}
-
 #output {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
   gap: 16px;
+  margin-top: 16px;
 }
 
 .table {
-  background: #f7f8fa;
-  border: 1px solid #e4e6eb;
-  border-radius: 12px;
-  padding: 12px;
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  min-height: 28px;
+.table h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #e5e5ea;
+  padding-bottom: 8px;
 }
 
 li {
-  margin: 6px 0;
+  list-style: none;
   padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #d8d8dd;
-  background: white;
-  cursor: move;
-  user-select: none;
+  margin: 6px 0;
+  border: 1px solid #e5e5ea;
+  border-radius: 8px;
+  cursor: grab;
+  background: #fff;
 }
 
-/* =========================
-   COUNTER + FOOTER
-========================= */
-.live-counter {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: #5a5a5f;
-}
-
-.footer-text {
-  text-align: center;
-  font-size: 12px;
-  color: #8a8a90;
-  margin-top: 10px;
-}
-
-/* =========================
-   UTILS + RESPONSIVE
-========================= */
-.hidden { display: none !important; }
-
+/* ========================= */
+.hidden { display: none; }
 .visually-hidden {
-  position: absolute !important;
-  height: 1px; width: 1px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  clip: rect(1px, 1px, 1px, 1px);
-  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+.footer-text {
+  margin-top: 40px;
+  font-size: 12px;
+  color: #6e6e73;
+  text-align: center;
 }
 
-@media (max-width: 760px) {
-  body {
-    padding: 14px;
-  }
+.live-counter {
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #3a3a3c;
+  display: flex;
+  gap: 16px;
+  font-weight: 600;
+}
 
-  h1 {
-    font-size: 26px;
-  }
-
-  .toolbar {
-    align-items: stretch;
-  }
-
-  .mode-buttons {
-    width: 100%;
-    margin-bottom: 0;
-  }
-
-  .toggle-button {
-    width: 100%;
-  }
-
-  .collab-controls {
-    width: 100%;
-  }
-
-  .collab-controls input {
-    width: 100%;
-  }
-
-  #collabDisplayName {
-    width: 100%;
-  }
+body.dark-mode .live-counter {
+  color: #d1d1d6;
 }
 
 body.dark-mode .toolbar {
@@ -545,6 +556,7 @@ body.dark-mode .suggestion-item:hover,
 body.dark-mode .suggestion-item.active {
   background: #2f4b76;
 }
+
 
 </style>
 </head>
@@ -571,6 +583,8 @@ body.dark-mode .suggestion-item.active {
     <input id="collabDisplayName" type="text" placeholder="Your name" autocomplete="off">
     <label class="visually-hidden" for="sessionCodeInput">Collab session code</label>
     <input id="sessionCodeInput" type="text" placeholder="Session code" autocomplete="off">
+    <label class="visually-hidden" for="sessionKeyInput">Collab secret key</label>
+    <input id="sessionKeyInput" type="password" placeholder="Secret key" autocomplete="off">
     <button type="button" id="connectSessionBtn" class="toggle-button">Connect Session</button>
     <span id="collabStatus" class="helper-text">Collab: Off</span>
   </div>
@@ -612,53 +626,74 @@ body.dark-mode .suggestion-item.active {
 
   <div class="card">
     <div class="card-header">
-      <h3>Point Settings</h3>
+      <h3>Groups That Must Sit Together</h3>
     </div>
-    <p class="helper-text">Customize points awarded per event and for core attendance multiplier.</p>
-    <div class="controls-inline">
-      <label class="field-label" for="pointsRosary">Rosary</label>
-      <input id="pointsRosary" type="number" min="0" step="1" value="8">
-      <label class="field-label" for="pointsYouth">Youth Group</label>
-      <input id="pointsYouth" type="number" min="0" step="1" value="20">
-      <label class="field-label" for="pointsHolyHour">Holy Hour</label>
-      <input id="pointsHolyHour" type="number" min="0" step="1" value="15">
-      <label class="field-label" for="pointsService">Service</label>
-      <input id="pointsService" type="number" min="0" step="1" value="30">
-      <label class="field-label" for="coreMultiplier">Core multiplier</label>
-      <input id="coreMultiplier" type="number" min="1" step="0.05" value="1.25">
-    </div>
-  </div>
+    <label class="field-label" for="togetherGroups">Group list</label>
+    <textarea id="togetherGroups" placeholder="One group per line: Name, Name, Name"></textarea>
+    <p class="helper-text">Tap a present name to add it to the current group line.</p>
+    <div id="togetherNameButtons" class="together-buttons" aria-live="polite"></div>
 
-  <div class="card">
-    <div class="card-header">
-      <h3>Group Together Preferences</h3>
-    </div>
-    <p class="helper-text">Enter names separated by commas. Each line is a preferred group.</p>
-    <div id="togetherButtons" class="controls-inline"></div>
-    <textarea id="togetherGroups" rows="5" placeholder="Name One, Name Two&#10;Name Three, Name Four"></textarea>
-  </div>
+    <h3>Number of Tables</h3>
+    <label class="field-label" for="numTables">Total tables</label>
+    <input type="number" id="numTables" min="1" value="8">
 
-  <div class="card">
-    <div class="card-header">
-      <h3>Table Planner</h3>
-      <p id="liveCounter" class="live-counter"></p>
-    </div>
-    <div class="controls-inline">
-      <label class="field-label" for="numTables"># of tables</label>
-      <input id="numTables" type="number" min="1" max="20" value="8">
-      <button type="button" onclick="makeTables()">Generate Tables</button>
-      <button type="button" class="secondary" onclick="copyOutput()">Copy Output</button>
-    </div>
+    <br><br>
+    <button type="button" onclick="generateTables()">Generate Tables</button>
+
     <div id="output"></div>
+  </div>
+
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3>Point Settings</h3>
+  </div>
+  <p class="helper-text">Change point values anytime. Core members receive the multiplier shown below.</p>
+  <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+    <div>
+      <label class="field-label" for="pointsRosary">Rosary points</label>
+      <input id="pointsRosary" type="number" min="0" step="1" value="8">
+    </div>
+    <div>
+      <label class="field-label" for="pointsYouth">Youth Group points</label>
+      <input id="pointsYouth" type="number" min="0" step="1" value="20">
+    </div>
+    <div>
+      <label class="field-label" for="pointsHolyHour">Holy Hour points</label>
+      <input id="pointsHolyHour" type="number" min="0" step="1" value="15">
+    </div>
+    <div>
+      <label class="field-label" for="pointsService">Service points</label>
+      <input id="pointsService" type="number" min="0" step="1" value="30">
+    </div>
+    <div>
+      <label class="field-label" for="coreMultiplier">Core multiplier</label>
+      <input id="coreMultiplier" type="number" min="1" step="0.01" value="1.25">
+    </div>
   </div>
 </div>
 
 <div class="card">
   <div class="card-header">
-    <h3>Copy List</h3>
+    <h3>Attendance List</h3>
   </div>
-  <textarea id="copyList" rows="8" readonly></textarea>
-  <p class="footer-text">Tip: Use notes for late arrivals, rides, allergies, and follow-ups.</p>
+
+  <!-- LIVE COUNTER -->
+  <div id="liveCounter" class="live-counter" aria-live="polite"></div>
+
+  <label class="field-label" for="copyList">Attendance output</label>
+  <textarea id="copyList" rows="8" placeholder="Marked attendees will appear here..."></textarea>
+  <br><br>
+  <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
+</div>
+
+<div class="footer-text">
+  © 2026 Saint Thomas the Apostle Youth Group · Raphael Ide
+</div>
+
+<div class="footer-text">
+   Click <a href="https://files.ecatholic.com/20819/documents/2026/2/Top%2050%20Point%20Scorers.pdf?t=1770505299000">here</a> to see the current point standings!!
 </div>
 
 </div>
@@ -750,7 +785,6 @@ let collabSessionCode = "";
 let collabSessionRoom = "";
 let collabCryptoKeyPromise = null;
 let collabSaltBase64 = "";
-let collabSharedSecret = "";
 let localCollabId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 let presenceHeartbeatTimer = null;
 let cleanupPresenceHandler = null;
@@ -849,9 +883,11 @@ async function decryptCollabPayload(raw) {
     return raw;
   }
 
-  if (!collabSharedSecret) return null;
+  const secretInput = document.getElementById("sessionKeyInput");
+  const secret = secretInput?.value.trim();
+  if (!secret) return null;
 
-  const key = await deriveSessionKey(collabSharedSecret, base64ToBytes(envelope.s));
+  const key = await deriveSessionKey(secret, base64ToBytes(envelope.s));
   const decrypted = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: base64ToBytes(envelope.i) },
     key,
@@ -898,20 +934,116 @@ function stopFirebaseSubscription() {
   firebaseSessionRef = null;
 }
 
-function setAwarenessState() {
-  if (!yProviders.length) return;
-  const payload = {
-    id: localCollabId,
-    name: getCollabDisplayName(),
-    ts: Date.now()
-  };
-  yProviders.forEach(provider => provider.awareness.setLocalStateField("user", payload));
+async function publishCollabState() {
+  if (isApplyingRemoteState) return;
+  const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
+  const securedPayload = await encryptCollabPayload(payload);
+
+  if (yStateMap) yStateMap.set("payload", securedPayload);
+  if (collabChannel) collabChannel.postMessage(securedPayload);
+  if (collabStorageKey) localStorage.setItem(collabStorageKey, securedPayload);
+  if (firebaseSessionRef) {
+    await firebaseSessionRef.set({
+      payload: securedPayload,
+      updatedAt: Date.now(),
+      author: localCollabId
+    });
+  }
+}
+
+async function applyIncomingState(raw) {
+  if (!raw) return;
+
+  const decoded = await decryptCollabPayload(raw);
+  if (!decoded) return;
+
+  let state;
+  try {
+    state = JSON.parse(decoded);
+  } catch {
+    return;
+  }
+
+  const timestamp = Number(state.updatedAt) || 0;
+  if (timestamp && timestamp < latestStateTimestamp) return;
+  if (timestamp) latestStateTimestamp = timestamp;
+
+  isApplyingRemoteState = true;
+
+  if (Array.isArray(state.presentList)) {
+    presentList.splice(0, presentList.length, ...state.presentList);
+  }
+  if (Array.isArray(state.coreList)) {
+    coreList.splice(0, coreList.length, ...state.coreList);
+  }
+  if (Array.isArray(state.tables)) {
+    tables.splice(0, tables.length, ...state.tables);
+  }
+
+  if (typeof state.currentMode === "string") {
+    setMode(state.currentMode);
+  }
+
+  if (state.eventPoints && typeof state.eventPoints === "object") {
+    eventPoints = { ...eventPoints, ...state.eventPoints };
+    syncPointInputs();
+  }
+
+  if (typeof state.coreMultiplier === "number") {
+    coreMultiplier = state.coreMultiplier;
+    syncPointInputs();
+  }
+
+  const together = document.getElementById("togetherGroups");
+  if (together && typeof state.togetherGroups === "string") {
+    together.value = state.togetherGroups;
+  }
+
+  const numTables = document.getElementById("numTables");
+  if (numTables && typeof state.numTables === "string") {
+    numTables.value = state.numTables;
+  }
+
+  if (typeof state.darkMode === "boolean") {
+    document.body.classList.toggle("dark-mode", state.darkMode);
+    const button = document.getElementById("darkModeBtn");
+    if (button) {
+      button.classList.toggle("dark-on", state.darkMode);
+      button.setAttribute("aria-pressed", state.darkMode ? "true" : "false");
+      button.textContent = state.darkMode ? "Turn off Dark Mode" : "Turn on Dark Mode";
+    }
+  }
+
+  Object.values(listRenderers).forEach(render => render());
+  renderTables();
+  updateCopyList();
+
+  isApplyingRemoteState = false;
+}
+
+function queueApplyIncomingState(raw) {
+  applyIncomingState(raw).catch(() => {
+    const status = document.getElementById("collabStatus");
+    if (status) status.textContent = "Collab: Unable to decrypt incoming update";
+  });
 }
 
 function getCollabDisplayName() {
   const input = document.getElementById("collabDisplayName");
-  const value = input?.value.trim();
-  return value || "Anonymous";
+  const trimmed = input?.value.trim();
+  return trimmed || localStorage.getItem(COLLAB_NAME_STORAGE_KEY) || "Anonymous";
+}
+
+function setAwarenessState() {
+  if (!yProviders.length) return;
+  const displayName = getCollabDisplayName();
+  localStorage.setItem(COLLAB_NAME_STORAGE_KEY, displayName);
+  yProviders.forEach(provider => {
+    provider.awareness.setLocalStateField("user", {
+      id: localCollabId,
+      name: displayName
+    });
+  });
 }
 
 function refreshPresenceCard() {
@@ -919,21 +1051,27 @@ function refreshPresenceCard() {
   const list = document.getElementById("presenceList");
   if (!summary || !list) return;
 
-  const byId = new Map();
+  if (!collabSessionCode || !yProviders.length) {
+    summary.textContent = "Connect a session to see collaborators.";
+    list.innerHTML = "";
+    return;
+  }
 
-  yProviders.forEach(provider => {
-    const states = provider.awareness?.getStates?.();
-    if (!states) return;
-    states.forEach(state => {
-      if (!state?.user) return;
-      byId.set(state.user.id, state.user);
+  const awarenessStates = yProviders.flatMap(provider => Array.from(provider.awareness.getStates().values()));
+  const usersById = new Map();
+
+  awarenessStates.forEach(state => {
+    const user = state?.user;
+    if (!user || !user.id) return;
+    usersById.set(user.id, {
+      id: user.id,
+      name: user.name || "Anonymous"
     });
   });
 
-  const others = Array.from(byId.values()).filter(user => user.id !== localCollabId);
-
+  const others = Array.from(usersById.values()).filter(user => user.id !== localCollabId);
   if (!others.length) {
-    summary.textContent = "No other collaborators connected right now.";
+    summary.textContent = "No one else is in this file right now.";
     list.innerHTML = "";
     return;
   }
@@ -985,11 +1123,18 @@ function startPresenceHeartbeat(code) {
 
 async function connectCollabSession() {
   const codeInput = document.getElementById("sessionCodeInput");
+  const secretInput = document.getElementById("sessionKeyInput");
   const status = document.getElementById("collabStatus");
   const code = codeInput?.value.trim();
+  const secret = secretInput?.value.trim();
 
   if (!code) {
     if (status) status.textContent = "Collab: Enter a session code";
+    return;
+  }
+
+  if (!secret || secret.length < 8) {
+    if (status) status.textContent = "Collab: Secret key must be at least 8 characters";
     return;
   }
 
@@ -1011,9 +1156,8 @@ async function connectCollabSession() {
   latestStateTimestamp = 0;
   stopFirebaseSubscription();
 
-  collabSharedSecret = `st-collab-${code.toLowerCase()}`;
   collabSaltBase64 = bytesToBase64(crypto.getRandomValues(new Uint8Array(16)));
-  collabCryptoKeyPromise = deriveSessionKey(collabSharedSecret, base64ToBytes(collabSaltBase64));
+  collabCryptoKeyPromise = deriveSessionKey(secret, base64ToBytes(collabSaltBase64));
 
   if (window.Y) {
     yDoc = new Y.Doc();
@@ -1043,219 +1187,62 @@ async function connectCollabSession() {
     yStateMap = yDoc.getMap("attendance");
     yStateMap.observe(() => queueApplyIncomingState(yStateMap.get("payload")));
 
-    awarenessUnsubscribers = yProviders.map(provider => {
-      const handler = () => refreshPresenceCard();
-      provider.awareness.on("change", handler);
-      return () => provider.awareness.off("change", handler);
+    yProviders.forEach(provider => {
+      const awarenessHandler = () => refreshPresenceCard();
+      provider.awareness.on("change", awarenessHandler);
+      awarenessUnsubscribers.push(() => provider.awareness.off("change", awarenessHandler));
     });
-
-    if (status) status.textContent = `Collab: Connected (${code})`;
-    startPresenceHeartbeat(code);
-    setTimeout(() => publishCollabState(), 50);
-    return;
   }
 
   if (initializeFirebaseBackend()) {
-    firebaseSessionRef = firebaseDb.ref(`sessions/${collabSessionRoom}/state`);
-    firebaseUnsubscribe = firebaseSessionRef.on(
-      "value",
-      snapshot => {
-        const value = snapshot.val();
-        if (!value || value.author === localCollabId) return;
-        queueApplyIncomingState(value.payload);
-      },
-      error => {
-        if (status) status.textContent = `Collab: Firebase error (${error.message})`;
-      }
-    );
-
-    if (status) status.textContent = `Collab: Firebase (${code})`;
-    startPresenceHeartbeat(code);
-    publishCollabState();
-    return;
+    firebaseSessionRef = firebaseDb.ref(`sessions/${collabStorageKey}`);
+    const firebaseHandler = snapshot => {
+      const value = snapshot.val();
+      if (!value?.payload) return;
+      if (value.author === localCollabId) return;
+      queueApplyIncomingState(value.payload);
+    };
+    firebaseSessionRef.on("value", firebaseHandler);
+    firebaseUnsubscribe = () => firebaseSessionRef?.off("value", firebaseHandler);
+    if (status) status.textContent = `Collab: Firebase + P2P connected (${code})`;
   }
 
-  if (status) status.textContent = "Collab: Local tab sync only";
+  const existingPayload = localStorage.getItem(collabStorageKey);
+  if (existingPayload) {
+    queueApplyIncomingState(existingPayload);
+  }
+
   startPresenceHeartbeat(code);
-  publishCollabState();
-}
+  await publishCollabState();
 
-async function publishCollabState() {
-  if (!collabStorageKey || isApplyingRemoteState) return;
-  const state = {
-    v: 1,
-    ts: Date.now(),
-    data: getCurrentState()
-  };
-  const raw = JSON.stringify(state);
-  const payload = await encryptCollabPayload(raw);
-
-  if (collabChannel) collabChannel.postMessage(payload);
-
-  if (yStateMap) {
-    yStateMap.set("payload", payload);
-  }
-
-  if (firebaseSessionRef) {
-    firebaseSessionRef.set({
-      ts: state.ts,
-      payload,
-      author: localCollabId
-    });
+  if (status && !yProviders.length && !firebaseSessionRef) {
+    status.textContent = `Collab: Local secure sync only (${code})`;
+  } else if (status && firebaseSessionRef) {
+    status.textContent = `Collab: Firebase-backed sync active (${code})`;
   }
 }
 
-let applyStateTimeout = null;
-let pendingIncomingPayload = null;
-
-function queueApplyIncomingState(raw) {
-  pendingIncomingPayload = raw;
-  if (applyStateTimeout) return;
-  applyStateTimeout = setTimeout(async () => {
-    applyStateTimeout = null;
-    const payload = pendingIncomingPayload;
-    pendingIncomingPayload = null;
-    await applyIncomingState(payload);
-  }, 0);
-}
-
-async function applyIncomingState(raw) {
-  if (!raw) return;
-  let decrypted;
-  try {
-    decrypted = await decryptCollabPayload(raw);
-  } catch {
-    return;
-  }
-  if (!decrypted) return;
-
-  let state;
-  try {
-    state = JSON.parse(decrypted);
-  } catch {
-    return;
-  }
-
-  if (!state?.data || typeof state.ts !== "number") return;
-  if (state.ts <= latestStateTimestamp) return;
-  latestStateTimestamp = state.ts;
-
-  isApplyingRemoteState = true;
-  try {
-    const incoming = state.data;
-
-    presentList = Array.isArray(incoming.presentList) ? incoming.presentList : [];
-    coreList = Array.isArray(incoming.coreList) ? incoming.coreList : [];
-    tables = Array.isArray(incoming.tables) ? incoming.tables : [];
-    currentMode = typeof incoming.currentMode === "string" ? incoming.currentMode : "youth";
-
-    if (incoming.eventPoints && typeof incoming.eventPoints === "object") {
-      eventPoints = {
-        rosary: Number(incoming.eventPoints.rosary) || eventPoints.rosary,
-        youth: Number(incoming.eventPoints.youth) || eventPoints.youth,
-        holyHour: Number(incoming.eventPoints.holyHour) || eventPoints.holyHour,
-        service: Number(incoming.eventPoints.service) || eventPoints.service
-      };
-    }
-
-    if (incoming.coreMultiplier !== undefined) {
-      coreMultiplier = Math.max(1, Number(incoming.coreMultiplier) || coreMultiplier);
-    }
-
-    const togetherGroups = document.getElementById("togetherGroups");
-    if (togetherGroups && typeof incoming.togetherGroups === "string") {
-      togetherGroups.value = incoming.togetherGroups;
-    }
-
-    const numTables = document.getElementById("numTables");
-    if (numTables && incoming.numTables !== undefined) {
-      numTables.value = incoming.numTables;
-    }
-
-    const shouldDark = Boolean(incoming.darkMode);
-    document.body.classList.toggle("dark-mode", shouldDark);
-    const darkModeButton = document.getElementById("darkModeBtn");
-    if (darkModeButton) {
-      darkModeButton.classList.toggle("dark-on", shouldDark);
-      darkModeButton.setAttribute("aria-pressed", shouldDark ? "true" : "false");
-      darkModeButton.textContent = shouldDark ? "Turn off Dark Mode" : "Turn on Dark Mode";
-    }
-
-    Object.values(listRenderers).forEach(render => render());
-    syncPointInputs();
-    setMode(currentMode);
-    renderTables();
-    updateLiveCounter();
-    updateTogetherButtons();
-  } finally {
-    isApplyingRemoteState = false;
-  }
-}
-
-function savePointSettings() {
-  localStorage.setItem(
-    POINTS_STORAGE_KEY,
-    JSON.stringify({ eventPoints, coreMultiplier })
-  );
-}
-
-function loadPointSettings() {
-  try {
-    const raw = localStorage.getItem(POINTS_STORAGE_KEY);
-    if (!raw) return;
-    const parsed = JSON.parse(raw);
-
-    if (parsed?.eventPoints) {
-      eventPoints = {
-        rosary: Math.max(0, Number(parsed.eventPoints.rosary) || eventPoints.rosary),
-        youth: Math.max(0, Number(parsed.eventPoints.youth) || eventPoints.youth),
-        holyHour: Math.max(0, Number(parsed.eventPoints.holyHour) || eventPoints.holyHour),
-        service: Math.max(0, Number(parsed.eventPoints.service) || eventPoints.service)
-      };
-    }
-
-    if (parsed?.coreMultiplier !== undefined) {
-      coreMultiplier = Math.max(1, Number(parsed.coreMultiplier) || coreMultiplier);
-    }
-  } catch {
-    // ignore malformed storage
-  }
-}
-
-function syncPointInputs() {
-  const byId = {
-    pointsRosary: eventPoints.rosary,
-    pointsYouth: eventPoints.youth,
-    pointsHolyHour: eventPoints.holyHour,
-    pointsService: eventPoints.service,
-    coreMultiplier
-  };
-
-  Object.entries(byId).forEach(([id, value]) => {
-    const input = document.getElementById(id);
-    if (input) input.value = String(value);
-  });
-}
-
-function normalizeName(name) {
-  if (!name) return "";
-  return name
-    .replace(/\s+/g, " ")
-    .trim()
-    .replace(/\b\w/g, char => char.toUpperCase());
+function normalizeName(value) {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function appendNameToTogetherGroup(name) {
   const textarea = document.getElementById("togetherGroups");
   if (!textarea) return;
-  const existing = textarea.value.trim();
-  textarea.value = existing ? `${existing}\n${name}` : name;
+
+  const current = textarea.value;
+  if (!current.trim()) {
+    textarea.value = name;
+  } else if (current.endsWith("\n")) {
+    textarea.value = `${current}${name}`;
+  } else {
+    textarea.value = `${current}, ${name}`;
+  }
   textarea.focus();
-  textarea.dispatchEvent(new Event("input"));
 }
 
 function updateTogetherButtons() {
-  const container = document.getElementById("togetherButtons");
+  const container = document.getElementById("togetherNameButtons");
   if (!container) return;
 
   container.innerHTML = "";
@@ -1409,11 +1396,6 @@ function setupAutocomplete(
     activeIndex = -1;
 
     renderSelected();
-
-    // Keep focus on mobile so the keyboard stays open for rapid entry.
-    requestAnimationFrame(() => {
-      input.focus();
-    });
   }
 
   function maybeAddNewName(rawName) {
@@ -1500,93 +1482,117 @@ function setupAutocomplete(
   renderSelected();
 }
 
-/* =========================
-   COPY / OUTPUT
-========================= */
-function attendeePoints(person, isCore, mode) {
-  const base = eventPoints[mode] || 0;
-  if (!isCore) return base;
-  return Math.round(base * coreMultiplier);
+function loadPointSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POINTS_STORAGE_KEY) || "{}");
+    if (saved.eventPoints && typeof saved.eventPoints === "object") {
+      eventPoints = { ...eventPoints, ...saved.eventPoints };
+    }
+    if (typeof saved.coreMultiplier === "number") {
+      coreMultiplier = saved.coreMultiplier;
+    }
+  } catch {
+    // ignore invalid local settings
+  }
 }
 
+function savePointSettings() {
+  localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify({ eventPoints, coreMultiplier }));
+}
+
+function syncPointInputs() {
+  const ids = {
+    rosary: "pointsRosary",
+    youth: "pointsYouth",
+    holyHour: "pointsHolyHour",
+    service: "pointsService"
+  };
+
+  Object.entries(ids).forEach(([event, id]) => {
+    const input = document.getElementById(id);
+    if (input) input.value = String(eventPoints[event]);
+  });
+
+  const multiplierInput = document.getElementById("coreMultiplier");
+  if (multiplierInput) multiplierInput.value = String(coreMultiplier);
+}
+
+function getPointsForAttendee(name) {
+  const base = Number(eventPoints[currentMode] || 0);
+  const isCore = coreList.some(c => c.name === name);
+  return isCore ? Math.round(base * coreMultiplier) : base;
+}
+
+/* =========================
+   COPY LIST
+========================= */
 function updateCopyList() {
-  const area = document.getElementById("copyList");
-  if (!area) return;
+  const lines = [];
 
-  const presentNames = presentList.map(p => p.name);
-  const coreNames = new Set(coreList.map(c => c.name));
+  presentList.forEach(p => {
+    const isCore = coreList.some(c => c.name === p.name);
+    const points = getPointsForAttendee(p.name);
+    lines.push(`${p.name}${isCore ? " (CORE)" : ""} - ${points} pts`);
+  });
 
-  let lines = [];
-  lines.push(`Event: ${EVENT_LABELS[currentMode] || currentMode}`);
-  lines.push("");
-
-  lines.push("Present:");
-  if (!presentList.length) {
-    lines.push("- (none)");
-  } else {
-    presentList
-      .map(obj => obj.name)
-      .sort((a, b) => a.localeCompare(b))
-      .forEach(name => {
-        const isCore = coreNames.has(name);
-        const pts = attendeePoints(name, isCore, currentMode);
-        const note = presentList.find(p => p.name === name)?.notes?.trim();
-        lines.push(`- ${name}${isCore ? " (Core)" : ""} — ${pts} pts${note ? ` | Note: ${note}` : ""}`);
-      });
-  }
-
-  lines.push("");
-  lines.push("Core:");
-  if (!coreList.length) {
-    lines.push("- (none)");
-  } else {
-    coreList
-      .map(obj => obj.name)
-      .sort((a, b) => a.localeCompare(b))
-      .forEach(name => {
-        const note = coreList.find(c => c.name === name)?.notes?.trim();
-        lines.push(`- ${name}${note ? ` | Note: ${note}` : ""}`);
-      });
-  }
-
-  if (tables.length) {
-    lines.push("");
-    lines.push("Tables:");
-    tables.forEach((tbl, idx) => {
-      lines.push(`Table ${idx + 1}: ${tbl.join(", ")}`);
-    });
-  }
-
-  area.value = lines.join("\n");
+  document.getElementById("copyList").value = lines.join("\n");
   updateLiveCounter();
-}
-
-function copyOutput() {
-  const area = document.getElementById("copyList");
-  area.select();
-  document.execCommand("copy");
-}
-
-function updateLiveCounter() {
-  const el = document.getElementById("liveCounter");
-  if (!el) return;
-
-  const total = presentList.length;
-  const coreCount = coreList.length;
-  const tableCount = tables.length ? tables.length : Number(document.getElementById("numTables")?.value || 0);
-
-  el.textContent = `${total} present • ${coreCount} core • ${tableCount} table${tableCount === 1 ? "" : "s"}`;
+  publishCollabState();
 }
 
 /* =========================
-   TABLE GENERATION
+   LIVE COUNTER
 ========================= */
-function makeTables() {
-  let num = parseInt(document.getElementById("numTables").value);
-  if (isNaN(num) || num < 1) return alert("Enter valid number of tables");
-  if (coreList.length > num) return alert("More core than tables!");
+function updateLiveCounter() {
+  const presentCount = presentList.length;
+  const coreCount = coreList.length;
+  const tableCount = tables.length;
+  const totalPoints = presentList.reduce((sum, person) => sum + getPointsForAttendee(person.name), 0);
 
-  tables = Array.from({length:num},()=>[]);
+  const counter = document.getElementById("liveCounter");
+  counter.textContent = `Event: ${EVENT_LABELS[currentMode]}  |  Present: ${presentCount}  |  Core: ${coreCount}  |  Tables: ${tableCount}  |  Total Points: ${totalPoints}`;
+}
+
+/* =========================
+   CSV EXPORT
+========================= */
+function exportToCSV() {
+  if(!presentList.length){alert("No attendees selected."); return;}
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const year = String(now.getFullYear()).slice(-2);
+  const filename = `${currentMode}_attendees_${month}_${day}_${year}.csv`;
+  const combined = [...presentList];
+  const escapeField = value => `"${String(value).replace(/"/g, '""')}"`;
+  const tableByAttendee = new Map();
+  tables.forEach((table, index) => {
+    const tableNumber = index + 1;
+    table.forEach(name => tableByAttendee.set(name, tableNumber));
+  });
+
+  let csv="Name,Event,Is Core,Points,Table Number,Notes\n";
+  combined.forEach(obj=>{
+    const tableNumber = tableByAttendee.get(obj.name) || "";
+    const isCore = coreList.some(c => c.name === obj.name);
+    const points = getPointsForAttendee(obj.name);
+    csv += `${escapeField(obj.name)},${escapeField(EVENT_LABELS[currentMode])},${escapeField(isCore ? "Yes" : "No")},${escapeField(points)},${escapeField(tableNumber)},${escapeField(obj.notes||"")}\n`;
+  });
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link=document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download=filename;
+  document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
+/* =========================
+   TABLES
+========================= */
+function generateTables() {
+  const num=parseInt(document.getElementById("numTables").value);
+  if(coreList.length<num){alert("You need at least as many core members as tables."); return;}
+  tables=Array.from({length:num},()=>[]);
 
   function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
 
@@ -1688,6 +1694,7 @@ function toggleDarkMode() {
   publishCollabState();
 }
 
+
 const connectSessionBtn = document.getElementById("connectSessionBtn");
 if (connectSessionBtn) {
   connectSessionBtn.addEventListener("click", connectCollabSession);
@@ -1696,6 +1703,16 @@ if (connectSessionBtn) {
 const sessionCodeInput = document.getElementById("sessionCodeInput");
 if (sessionCodeInput) {
   sessionCodeInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      connectCollabSession();
+    }
+  });
+}
+
+const sessionKeyInput = document.getElementById("sessionKeyInput");
+if (sessionKeyInput) {
+  sessionKeyInput.addEventListener("keydown", event => {
     if (event.key === "Enter") {
       event.preventDefault();
       connectCollabSession();
@@ -1771,6 +1788,7 @@ updateCopyList();
 refreshPresenceCard();
 
 window.addEventListener("beforeunload", () => stopFirebaseSubscription());
+
 
 </script>
 </body>
