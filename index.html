@@ -558,54 +558,11 @@ body.dark-mode .suggestion-item.active {
 }
 
 
-.auth-screen {
-  min-height: calc(100vh - 48px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.auth-card {
-  width: min(480px, 100%);
-}
-
-.auth-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 12px;
-}
-
-.hint-text {
-  margin-top: 10px;
-}
-
-
-body.locked #appContent {
-  display: none !important;
-}
-
 </style>
 </head>
 
-<body class="locked">
-<div id="authScreen" class="auth-screen hidden">
-  <div class="card auth-card">
-    <h1>Saint Thomas Youth Group Attendance <span>Enter password</span></h1>
-    <form id="authForm">
-      <label class="field-label" for="passwordInput"></label>
-      <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Press Enter" aria-label="">
-      <div class="auth-actions">
-        <button type="submit">Enter</button>
-        <button type="button" id="hintBtn" class="toggle-button">Hint</button>
-      </div>
-      <p id="hintText" class="helper-text hint-text hidden"></p>
-      <p id="authMessage" class="helper-text hidden">Incorrect password. Try again.</p>
-    </form>
-  </div>
-</div>
-
-<div id="appContent" class="hidden">
+<body>
+<div id="appContent">
 <header class="page-header">
   <h1>Saint Thomas Youth Group Attendance <span>Track attendance, tables, and notes</span></h1>
   Click <a class="page-link" href="points-calculator.html">here</a> for spreadsheet point totals.
@@ -1738,41 +1695,6 @@ function toggleDarkMode() {
 }
 
 
-function initializeAccessGate() {
-  const authScreen = document.getElementById("authScreen");
-  const appContent = document.getElementById("appContent");
-  const authForm = document.getElementById("authForm");
-  const passwordInput = document.getElementById("passwordInput");
-  const hintBtn = document.getElementById("hintBtn");
-  const hintText = document.getElementById("hintText");
-  const authMessage = document.getElementById("authMessage");
-
-  if (!authScreen || !appContent) return;
-
-  const grantAccess = () => {
-    document.body.classList.remove("locked");
-    authScreen.classList.add("hidden");
-    appContent.classList.remove("hidden");
-    passwordInput.value = "";
-    authMessage.classList.add("hidden");
-  };
-
-  document.body.classList.add("locked");
-  authScreen.classList.remove("hidden");
-  appContent.classList.add("hidden");
-  passwordInput.focus();
-
-  authForm.addEventListener("submit", event => {
-    event.preventDefault();
-    grantAccess();
-  });
-
-  hintBtn.addEventListener("click", () => {
-    hintText.textContent = "maker";
-    hintText.classList.remove("hidden");
-  });
-}
-
 const connectSessionBtn = document.getElementById("connectSessionBtn");
 if (connectSessionBtn) {
   connectSessionBtn.addEventListener("click", connectCollabSession);
@@ -1867,7 +1789,6 @@ refreshPresenceCard();
 
 window.addEventListener("beforeunload", () => stopFirebaseSubscription());
 
-initializeAccessGate();
 
 </script>
 </body>
