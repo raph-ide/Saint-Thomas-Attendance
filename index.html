@@ -161,77 +161,6 @@ button.secondary {
   color: #5a5a5f;
 }
 
-let supabaseClient = null;
-
-function initializeSupabase() {
-  const url = window.ST_SUPABASE_URL;
-  const key = window.ST_SUPABASE_ANON_KEY;
-
-  if (!url || !key || !window.supabase) return null;
-  if (!supabaseClient) {
-    supabaseClient = window.supabase.createClient(url, key);
-  }
-  return supabaseClient;
-}
-
-async function saveEventToSupabase() {
-  if (!presentList.length) {
-    alert("No attendees selected.");
-    return;
-  }
-
-  const client = initializeSupabase();
-  if (!client) {
-    alert("Supabase not configured yet.");
-    return;
-  }
-
-  const { data: eventRow, error: eventError } = await client
-    .from("events")
-    .insert({
-      event_type: EVENT_LABELS[currentMode],
-      event_date: new Date().toISOString().slice(0, 10)
-    })
-    .select("id")
-    .single();
-
-  if (eventError) {
-    console.error(eventError);
-    alert("Failed to create event in Supabase.");
-    return;
-  }
-
-  const tableByAttendee = new Map();
-  tables.forEach((table, index) => {
-    const tableNumber = index + 1;
-    table.forEach(name => tableByAttendee.set(name, tableNumber));
-  });
-
-  const rows = presentList.map(person => {
-    const isCore = coreList.some(c => c.name === person.name);
-    return {
-      event_id: eventRow.id,
-      attendee_name: person.name,
-      is_core: isCore,
-      points: getPointsForAttendee(person.name),
-      table_number: tableByAttendee.get(person.name) || null,
-      attendee_notes: person.notes || null
-    };
-  });
-
-  const { error: rowsError } = await client
-    .from("attendance_rows")
-    .insert(rows);
-
-  if (rowsError) {
-    console.error(rowsError);
-    alert("Event saved, but attendee rows failed.");
-    return;
-  }
-
-  alert("Attendance saved to Supabase successfully.");
-}
-
 /* =========================
    DARK MODE
 ========================= */
@@ -871,23 +800,9 @@ body.dark-mode .suggestion-item.active {
 </div>
 
 <script src="https://unpkg.com/yjs@13.6.18/dist/yjs.js"></script>
-< src="https://unpkg.com/y-websocket@1.5.3/dist/y-websocket.js"></>
-< src="https://unpkg.com/y-webrtc@10.3.0/dist/y-webrtc.js"></>
-< src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></>
-< src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></>
-
-<>
-// Firebase configuration - Replace with your own Firebase project config
-window.ST_ATTENDANCE_FIREBASE_CONFIG = {
-  apiKey: "your-api-key",
-  authDomain: "your-project.firebaseapp.com",
-  databaseURL: "https://your-project-default-rtdb.firebaseio.com",
-  projectId: "your-project-id",
-  appId: "your-app-id"
-};
-</>
-
-<>
+<script src="https://unpkg.com/y-websocket@1.5.3/dist/y-websocket.js"></script>
+<script src="https://unpkg.com/y-webrtc@10.3.0/dist/y-webrtc.js"></script>
+<script>
 /* =========================
    DATA
 ========================= */
@@ -972,11 +887,79 @@ let localCollabId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 let presenceHeartbeatTimer = null;
 let cleanupPresenceHandler = null;
 let latestStateTimestamp = 0;
-let firebaseApp = null;
-let firebaseDb = null;
-let firebaseSessionRef = null;
-let firebaseUnsubscribe = null;
 const COLLAB_NAME_STORAGE_KEY = "st-attendance-collab-name";
+
+
+let supabaseClient = null;
+
+function initializeSupabase() {
+  const url = window.ST_SUPABASE_URL;
+  const key = window.ST_SUPABASE_ANON_KEY;
+
+  if (!url || !key || !window.supabase) return null;
+  if (!supabaseClient) {
+    supabaseClient = window.supabase.createClient(url, key);
+  }
+  return supabaseClient;
+}
+
+async function saveEventToSupabase() {
+  if (!presentList.length) {
+    alert("No attendees selected.");
+    return;
+  }
+
+  const client = initializeSupabase();
+  if (!client) {
+    alert("Supabase not configured yet.");
+    return;
+  }
+
+  const { data: eventRow, error: eventError } = await client
+    .from("events")
+    .insert({
+      event_type: EVENT_LABELS[currentMode],
+      event_date: new Date().toISOString().slice(0, 10)
+    })
+    .select("id")
+    .single();
+
+  if (eventError) {
+    console.error(eventError);
+    alert("Failed to create event in Supabase.");
+    return;
+  }
+
+  const tableByAttendee = new Map();
+  tables.forEach((table, index) => {
+    const tableNumber = index + 1;
+    table.forEach(name => tableByAttendee.set(name, tableNumber));
+  });
+
+  const rows = presentList.map(person => {
+    const isCore = coreList.some(c => c.name === person.name);
+    return {
+      event_id: eventRow.id,
+      attendee_name: person.name,
+      is_core: isCore,
+      points: getPointsForAttendee(person.name),
+      table_number: tableByAttendee.get(person.name) || null,
+      attendee_notes: person.notes || null
+    };
+  });
+
+  const { error: rowsError } = await client
+    .from("attendance_rows")
+    .insert(rows);
+
+  if (rowsError) {
+    console.error(rowsError);
+    alert("Event saved, but attendee rows failed.");
+    return;
+  }
+
+  alert("Attendance saved to Supabase successfully.");
+}
 
 function getCurrentState() {
   return {
@@ -1004,42 +987,6 @@ async function decryptCollabPayload(raw) {
   return raw || null;
 }
 
-function getFirebaseConfig() {
-  const runtimeConfig = window.ST_ATTENDANCE_FIREBASE_CONFIG;
-  if (runtimeConfig && typeof runtimeConfig === "object") return runtimeConfig;
-
-  return {
-    apiKey: "",
-    authDomain: "",
-    databaseURL: "",
-    projectId: "",
-    appId: ""
-  };
-}
-
-function initializeFirebaseBackend() {
-  if (!window.firebase) return false;
-  const config = getFirebaseConfig();
-  if (!config.apiKey || !config.databaseURL || !config.projectId || !config.appId) {
-    return false;
-  }
-
-  if (!firebaseApp) {
-    firebaseApp = firebase.apps?.length ? firebase.app() : firebase.initializeApp(config);
-  }
-  if (!firebaseDb) {
-    firebaseDb = firebase.database(firebaseApp);
-  }
-  return true;
-}
-
-function stopFirebaseSubion() {
-  if (firebaseUnsubscribe) {
-    firebaseUnsubscribe();
-    firebaseUnsubscribe = null;
-  }
-  firebaseSessionRef = null;
-}
 
 async function publishCollabState() {
   if (isApplyingRemoteState) return;
@@ -1048,13 +995,6 @@ async function publishCollabState() {
   if (yStateMap) yStateMap.set("payload", payload);
   if (collabChannel) collabChannel.postMessage(payload);
   if (collabStorageKey) localStorage.setItem(collabStorageKey, payload);
-  if (firebaseSessionRef) {
-    await firebaseSessionRef.set({
-      payload: payload,
-      updatedAt: Date.now(),
-      author: localCollabId
-    });
-  }
 }
 
 async function applyIncomingState(raw) {
@@ -1254,7 +1194,6 @@ async function connectCollabSession() {
   yDoc = null;
   yStateMap = null;
   latestStateTimestamp = 0;
-  stopFirebaseSubion();
 
   if (window.Y) {
     yDoc = new Y.Doc();
@@ -1291,18 +1230,6 @@ async function connectCollabSession() {
     });
   }
 
-  if (initializeFirebaseBackend()) {
-    firebaseSessionRef = firebaseDb.ref(`sessions/${collabStorageKey}`);
-    const firebaseHandler = snapshot => {
-      const value = snapshot.val();
-      if (!value?.payload) return;
-      if (value.author === localCollabId) return;
-      queueApplyIncomingState(value.payload);
-    };
-    firebaseSessionRef.on("value", firebaseHandler);
-    firebaseUnsubscribe = () => firebaseSessionRef?.off("value", firebaseHandler);
-    if (status) status.textContent = `Collab: Firebase + P2P connected (${code})`;
-  }
 
   const existingPayload = localStorage.getItem(collabStorageKey);
   if (existingPayload) {
@@ -1312,11 +1239,10 @@ async function connectCollabSession() {
   startPresenceHeartbeat(code);
   await publishCollabState();
 
-  if (status && !yProviders.length && !firebaseSessionRef) {
+  if (status && !yProviders.length) {
     status.textContent = `Collab: Local sync only (${code})`;
-  } else if (status && firebaseSessionRef) {
-    status.textContent = `Collab: Firebase-backed sync active (${code})`;
   }
+
 }
 
 function normalizeName(value) {
@@ -1895,9 +1821,8 @@ syncPointInputs();
 updateCopyList();
 refreshPresenceCard();
 
-window.addEventListener("beforeunload", () => stopFirebaseSubion());
 
 
-</>
+</script>
 </body>
 </html>
