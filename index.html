@@ -754,6 +754,8 @@ const defaultCore = [
   "Ali Hamel","Ella Cronin","Alina Falcao","Paxton Roper"
 ];
 
+const defaultCoreLookup = new Set(defaultCore.map(name => name.toLowerCase()));
+
 const EVENT_LABELS = {
   rosary: "Rosary",
   youth: "Youth Group",
@@ -1135,6 +1137,23 @@ function normalizeName(value) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function isDefaultCoreMember(name) {
+  return defaultCoreLookup.has(String(name).toLowerCase());
+}
+
+function ensurePersonInList(list, name) {
+  if (list.some(person => person.name === name)) return false;
+  list.push({ name, notes: "" });
+  return true;
+}
+
+function removePersonFromList(list, name) {
+  const index = list.findIndex(person => person.name === name);
+  if (index === -1) return false;
+  list.splice(index, 1);
+  return true;
+}
+
 function appendNameToTogetherGroup(name) {
   const textarea = document.getElementById("togetherGroups");
   if (!textarea) return;
@@ -1238,7 +1257,8 @@ function setupAutocomplete(
 
         // 🔑 removing PRESENT also removes CORE
         if (targetArray === presentList) {
-          coreList = coreList.filter(c => c.name !== name);
+          removePersonFromList(coreList, name);
+          listRenderers.coreSelected?.();
         }
 
         renderSelected();
@@ -1288,15 +1308,18 @@ function setupAutocomplete(
   }
 
   function selectName(name) {
-    if (!targetArray.some(o => o.name === name)) {
-      targetArray.push({ name, notes: "" });
-    }
+    ensurePersonInList(targetArray, name);
 
     // 🔑 CORE ⊆ PRESENT
     if (targetArray === coreList) {
-      if (!presentList.some(p => p.name === name)) {
-        presentList.push({ name, notes: "" });
-      }
+      ensurePersonInList(presentList, name);
+      listRenderers.presentSelected?.();
+    }
+
+    // 🔑 DEFAULT CORE members added to PRESENT should auto-populate CORE
+    if (targetArray === presentList && isDefaultCoreMember(name)) {
+      ensurePersonInList(coreList, name);
+      listRenderers.coreSelected?.();
     }
 
     input.value = "";
