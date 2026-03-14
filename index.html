@@ -326,6 +326,12 @@ body.dark-mode .collab-controls input {
   border-color: #3a3a3c;
 }
 
+body.dark-mode #sharePhoneNumber {
+  background: #1c1c1e;
+  color: #f2f2f7;
+  border-color: #3a3a3c;
+}
+
 .presence-card {
   border-left: 4px solid #007aff;
 }
@@ -630,6 +636,22 @@ body.dark-mode .live-counter {
   color: #d1d1d6;
 }
 
+.actions-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.actions-row input {
+  flex: 1;
+  min-width: 190px;
+}
+
+.actions-row button {
+  white-space: nowrap;
+}
+
 body.dark-mode .toolbar {
   background: rgba(44, 44, 46, 0.9);
   border-color: rgba(255, 255, 255, 0.08);
@@ -687,11 +709,11 @@ body.dark-mode .suggestion-item.active {
   <div class="card-header">
     <h3>Present Attendees</h3>
   </div>
-  <p class="section-caption"></p>
+  <p class="section-caption">Step 1 · Mark who is here</p>
   <div class="input-stack">
   <div class="autocomplete-box">
     <label class="field-label" for="presentInput">Add present attendee</label>
-    <input id="presentInput" placeholder="Type Here: Enter selects first name" autocomplete="off" aria-autocomplete="list" aria-controls="presentSuggestions">
+    <input id="presentInput" placeholder="Search or type a full name, then press Enter" autocomplete="off" aria-autocomplete="list" aria-controls="presentSuggestions">
     <div id="presentSuggestions" class="suggestions" role="listbox"></div>
   </div>
   <div id="presentSelected" class="selected-list"></div>
@@ -704,11 +726,11 @@ body.dark-mode .suggestion-item.active {
     <div class="card-header">
       <h3>Core Members</h3>
     </div>
-    <p class="section-caption"></p>
+    <p class="section-caption">Step 2 · Confirm core attendees</p>
     <div class="input-stack">
     <div class="autocomplete-box">
       <label class="field-label" for="coreInput">Add core member</label>
-      <input id="coreInput" placeholder="Putting Core in Present will also suffice" autocomplete="off" aria-autocomplete="list" aria-controls="coreSuggestions">
+      <input id="coreInput" placeholder="Add a core member (auto-adds to Present)" autocomplete="off" aria-autocomplete="list" aria-controls="coreSuggestions">
       <div id="coreSuggestions" class="suggestions" role="listbox"></div>
     </div>
     <div id="coreSelected" class="selected-list"></div>
@@ -719,7 +741,7 @@ body.dark-mode .suggestion-item.active {
     <div class="card-header">
       <h3>Groups That Must Sit Together</h3>
     </div>
-    <p class="section-caption"></p>
+    <p class="section-caption">Step 3 · Build table groups</p>
     <label class="field-label" for="togetherGroups">Group list</label>
     <textarea id="togetherGroups" placeholder="One group per line: Name, Name, Name"></textarea>
     <p class="helper-text">Tap a present name to add it to the current group line.</p>
@@ -741,7 +763,7 @@ body.dark-mode .suggestion-item.active {
   <div class="card-header">
     <h3>Point Settings</h3>
   </div>
-  <p class="helper-text">Change only when needed, Core bonus is accounted for.</p>
+  <p class="helper-text">Change point values anytime. Core members receive the multiplier shown below.</p>
   <div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
     <div>
       <label class="field-label" for="pointsRosary">Rosary points</label>
@@ -770,7 +792,7 @@ body.dark-mode .suggestion-item.active {
   <div class="card-header">
     <h3>Attendance List</h3>
   </div>
-  <p class="section-caption"></p>
+  <p class="section-caption">Step 4 · Review and export</p>
 
   <!-- LIVE COUNTER -->
   <div id="liveCounter" class="live-counter" aria-live="polite"></div>
@@ -778,7 +800,11 @@ body.dark-mode .suggestion-item.active {
   <label class="field-label" for="copyList">Attendance output</label>
   <textarea id="copyList" rows="8" placeholder="Marked attendees will appear here..."></textarea>
   <br><br>
-  <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
+  <div class="actions-row">
+    <input id="sharePhoneNumber" type="tel" placeholder="Optional phone number for text (e.g. 5551234567)">
+    <button type="button" onclick="shareAttendanceList()">Share / Text List</button>
+    <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
+  </div>
 </div>
 
 <div class="footer-text">
@@ -1581,6 +1607,53 @@ function updateLiveCounter() {
   counter.textContent = `Event: ${EVENT_LABELS[currentMode]}  |  Present: ${presentCount}  |  Core: ${coreCount}  |  Tables: ${tableCount}  |  Total Points: ${totalPoints}`;
 }
 
+function buildShareMessage() {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString();
+  const title = `Saint Thomas Attendance (${EVENT_LABELS[currentMode]} - ${dateLabel})`;
+  const body = document.getElementById("copyList")?.value.trim() || "No attendees selected.";
+  return `${title}
+
+${body}`;
+}
+
+function getSmsLink(phoneNumber, message) {
+  const cleanNumber = String(phoneNumber || "").replace(/[^\d+]/g, "");
+  const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const separator = cleanNumber ? (isiOS ? "&" : "?") : "?";
+  return `sms:${cleanNumber}${separator}body=${encodeURIComponent(message)}`;
+}
+
+async function shareAttendanceList() {
+  if (!presentList.length) {
+    alert("No attendees selected.");
+    return;
+  }
+
+  const phoneInput = document.getElementById("sharePhoneNumber");
+  const phoneNumber = phoneInput?.value.trim() || "";
+  const message = buildShareMessage();
+
+  if (phoneNumber) {
+    window.location.href = getSmsLink(phoneNumber, message);
+    return;
+  }
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: "Saint Thomas Attendance",
+        text: message
+      });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+
+  window.location.href = getSmsLink("", message);
+}
+
 /* =========================
    CSV EXPORT
 ========================= */
@@ -1737,77 +1810,3 @@ if (sessionCodeInput) {
     }
   });
 }
-
-const collabDisplayNameInput = document.getElementById("collabDisplayName");
-if (collabDisplayNameInput) {
-  collabDisplayNameInput.addEventListener("input", () => {
-    if (collabSessionCode) {
-      localStorage.setItem(COLLAB_NAME_STORAGE_KEY, getCollabDisplayName());
-      setAwarenessState();
-      refreshPresenceCard();
-    }
-  });
-}
-
-window.addEventListener("storage", event => {
-  if (collabStorageKey && event.key === collabStorageKey && event.newValue) {
-    queueApplyIncomingState(event.newValue);
-  }
-
-});
-
-const togetherGroupsInput = document.getElementById("togetherGroups");
-if (togetherGroupsInput) {
-  togetherGroupsInput.addEventListener("input", publishCollabState);
-}
-
-const numTablesInput = document.getElementById("numTables");
-if (numTablesInput) {
-  numTablesInput.addEventListener("input", publishCollabState);
-}
-
-const pointInputMap = {
-  pointsRosary: "rosary",
-  pointsYouth: "youth",
-  pointsHolyHour: "holyHour",
-  pointsService: "service"
-};
-
-Object.entries(pointInputMap).forEach(([id, eventName]) => {
-  const input = document.getElementById(id);
-  if (!input) return;
-  input.addEventListener("input", () => {
-    eventPoints[eventName] = Math.max(0, Number(input.value) || 0);
-    savePointSettings();
-    updateCopyList();
-    publishCollabState();
-  });
-});
-
-const coreMultiplierInput = document.getElementById("coreMultiplier");
-if (coreMultiplierInput) {
-  coreMultiplierInput.addEventListener("input", () => {
-    coreMultiplier = Math.max(1, Number(coreMultiplierInput.value) || 1);
-    savePointSettings();
-    updateCopyList();
-    publishCollabState();
-  });
-}
-
-const savedCollabName = localStorage.getItem(COLLAB_NAME_STORAGE_KEY);
-if (savedCollabName) {
-  const collabNameInput = document.getElementById("collabDisplayName");
-  if (collabNameInput) collabNameInput.value = savedCollabName;
-}
-
-loadPointSettings();
-syncPointInputs();
-updateCopyList();
-refreshPresenceCard();
-
-window.addEventListener("beforeunload", () => stopFirebaseSubscription());
-
-
-</script>
-</body>
-</html>
