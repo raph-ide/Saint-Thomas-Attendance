@@ -700,6 +700,7 @@ body.dark-mode .suggestion-item.active {
     <input id="presentInput" placeholder="Search or type a full name, then press Enter" autocomplete="off" aria-autocomplete="list" aria-controls="presentSuggestions">
     <div id="presentSuggestions" class="suggestions" role="listbox"></div>
   </div>
+  <button type="button" id="syncSupabaseBtn" onclick="saveEventToSupabase()">Sync to Supabase</button>
   <div id="presentSelected" class="selected-list"></div>
   </div>
 </div>
@@ -787,8 +788,6 @@ body.dark-mode .suggestion-item.active {
   <button type="button" class="secondary" onclick="exportToCSV()">Export to CSV</button>
 </div>
 
-<button type="button" onclick="saveEventToSupabase()">Save to Supabase</button>
-   
 <div class="footer-text">
   © 2026 Saint Thomas the Apostle Youth Group · Raphael Ide
 </div>
@@ -888,9 +887,15 @@ let presenceHeartbeatTimer = null;
 let cleanupPresenceHandler = null;
 let latestStateTimestamp = 0;
 const COLLAB_NAME_STORAGE_KEY = "st-attendance-collab-name";
+const DEFAULT_COLLAB_SESSION_CODE = "st-thomas-live-room";
+const MODE_BY_EVENT_LABEL = Object.fromEntries(
+  Object.entries(EVENT_LABELS).map(([mode, label]) => [String(label).toLowerCase(), mode])
+);
 
-
+let publishStateTimer = null;
 let supabaseClient = null;
+let supabaseLiveChannel = null;
+let supabaseLiveReloadTimer = null;
 
 function initializeSupabase() {
   const url = window.ST_SUPABASE_URL;
@@ -961,6 +966,97 @@ async function saveEventToSupabase() {
   alert("Attendance saved to Supabase successfully.");
 }
 
+function getInitialSessionCode() {
+  const sessionFromQuery = new URLSearchParams(window.location.search).get("session");
+  if (sessionFromQuery && sessionFromQuery.trim()) return sessionFromQuery.trim();
+  return DEFAULT_COLLAB_SESSION_CODE;
+}
+
+async function loadLatestEventFromSupabase() {
+  const client = initializeSupabase();
+  if (!client) return;
+
+  const { data: latestEvents, error: latestEventError } = await client
+    .from("events")
+    .select("id, event_type")
+    .order("id", { ascending: false })
+    .limit(1);
+
+  if (latestEventError) {
+    console.error(latestEventError);
+    return;
+  }
+
+  const latestEvent = latestEvents?.[0];
+  if (!latestEvent?.id) return;
+
+  const { data: rows, error: rowsError } = await client
+    .from("attendance_rows")
+    .select("attendee_name, is_core, attendee_notes, table_number")
+    .eq("event_id", latestEvent.id);
+
+  if (rowsError) {
+    console.error(rowsError);
+    return;
+  }
+
+  const seenNames = new Set();
+  const nextPresent = [];
+  const nextCore = [];
+  const tablesByNumber = new Map();
+
+  rows.forEach(row => {
+    const name = String(row.attendee_name || "").trim();
+    if (!name || seenNames.has(name)) return;
+    seenNames.add(name);
+
+    const notes = row.attendee_notes || "";
+    nextPresent.push({ name, notes });
+    if (row.is_core) nextCore.push({ name, notes });
+
+    const tableNumber = Number(row.table_number);
+    if (Number.isInteger(tableNumber) && tableNumber > 0) {
+      if (!tablesByNumber.has(tableNumber)) tablesByNumber.set(tableNumber, []);
+      tablesByNumber.get(tableNumber).push(name);
+    }
+  });
+
+  const nextTables = Array.from(tablesByNumber.entries())
+    .sort((a, b) => a[0] - b[0])
+    .map(([, names]) => names);
+
+  const modeFromEventLabel = MODE_BY_EVENT_LABEL[String(latestEvent.event_type || "").toLowerCase()];
+
+  isApplyingRemoteState = true;
+  presentList.splice(0, presentList.length, ...nextPresent);
+  coreList.splice(0, coreList.length, ...nextCore);
+  tables.splice(0, tables.length, ...nextTables);
+  if (modeFromEventLabel) setMode(modeFromEventLabel);
+  Object.values(listRenderers).forEach(render => render());
+  renderTables();
+  updateCopyList();
+  isApplyingRemoteState = false;
+}
+
+function scheduleSupabaseReload() {
+  if (supabaseLiveReloadTimer) window.clearTimeout(supabaseLiveReloadTimer);
+  supabaseLiveReloadTimer = window.setTimeout(() => {
+    supabaseLiveReloadTimer = null;
+    loadLatestEventFromSupabase();
+  }, 250);
+}
+
+function startSupabaseLiveSync() {
+  const client = initializeSupabase();
+  if (!client || supabaseLiveChannel) return;
+
+  supabaseLiveChannel = client
+    .channel("st-attendance-live")
+    .on("postgres_changes", { event: "*", schema: "public", table: "events" }, scheduleSupabaseReload)
+    .on("postgres_changes", { event: "*", schema: "public", table: "attendance_rows" }, scheduleSupabaseReload)
+    .subscribe();
+}
+
 function getCurrentState() {
   return {
     presentList,
@@ -988,13 +1084,22 @@ async function decryptCollabPayload(raw) {
 }
 
 
-async function publishCollabState() {
+function sendCollabStateNow() {
   if (isApplyingRemoteState) return;
   const payload = JSON.stringify({ ...getCurrentState(), updatedAt: Date.now() });
 
   if (yStateMap) yStateMap.set("payload", payload);
   if (collabChannel) collabChannel.postMessage(payload);
   if (collabStorageKey) localStorage.setItem(collabStorageKey, payload);
+}
+
+function publishCollabState() {
+  if (isApplyingRemoteState) return;
+  if (publishStateTimer) window.clearTimeout(publishStateTimer);
+  publishStateTimer = window.setTimeout(() => {
+    publishStateTimer = null;
+    sendCollabStateNow();
+  }, 80);
 }
 
 async function applyIncomingState(raw) {
@@ -1820,6 +1925,14 @@ loadPointSettings();
 syncPointInputs();
 updateCopyList();
 refreshPresenceCard();
+
+const defaultSessionCode = getInitialSessionCode();
+if (sessionCodeInput && !sessionCodeInput.value.trim()) {
+  sessionCodeInput.value = defaultSessionCode;
+}
+connectCollabSession();
+loadLatestEventFromSupabase();
+startSupabaseLiveSync();
 
 
 
