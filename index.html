@@ -896,6 +896,7 @@ let publishStateTimer = null;
 let supabaseClient = null;
 let supabaseLiveChannel = null;
 let supabaseLiveReloadTimer = null;
+let activeSupabaseEventId = null;
 
 function initializeSupabase() {
   const url = window.ST_SUPABASE_URL;
@@ -935,6 +936,8 @@ async function saveEventToSupabase() {
     return;
   }
 
+  activeSupabaseEventId = eventRow.id;
+
   const tableByAttendee = new Map();
   tables.forEach((table, index) => {
     const tableNumber = index + 1;
@@ -966,6 +969,24 @@ async function saveEventToSupabase() {
   alert("Attendance saved to Supabase successfully.");
 }
 
+
+async function deleteAttendeeFromSupabase(name) {
+  const client = initializeSupabase();
+  if (!client || !activeSupabaseEventId || !name) return;
+
+  const { error } = await client
+    .from("attendance_rows")
+    .delete()
+    .eq("event_id", activeSupabaseEventId)
+    .eq("attendee_name", name);
+
+  if (error) {
+    console.error(error);
+    const status = document.getElementById("collabStatus");
+    if (status) status.textContent = `Collab: Could not delete ${name} from Supabase`;
+  }
+}
+
 function getInitialSessionCode() {
   const sessionFromQuery = new URLSearchParams(window.location.search).get("session");
   if (sessionFromQuery && sessionFromQuery.trim()) return sessionFromQuery.trim();
@@ -989,6 +1010,7 @@ async function loadLatestEventFromSupabase() {
 
   const latestEvent = latestEvents?.[0];
   if (!latestEvent?.id) return;
+  activeSupabaseEventId = latestEvent.id;
 
   const { data: rows, error: rowsError } = await client
     .from("attendance_rows")
@@ -1276,12 +1298,17 @@ async function connectCollabSession() {
   const codeInput = document.getElementById("sessionCodeInput");
   const status = document.getElementById("collabStatus");
   const code = codeInput?.value.trim();
+  const displayName = getCollabDisplayName();
 
   if (!code) {
     if (status) status.textContent = "Collab: Enter a session code";
     return;
   }
 
+  if (!displayName || displayName === "Anonymous") {
+    if (status) status.textContent = "Collab: Enter your name to join";
+    return;
+  }
 
   removeLocalPresence();
   if (collabChannel) collabChannel.close();
@@ -1342,16 +1369,50 @@ async function connectCollabSession() {
   }
 
   startPresenceHeartbeat(code);
+  setEditingLocked(false);
   await publishCollabState();
 
   if (status && !yProviders.length) {
     status.textContent = `Collab: Local sync only (${code})`;
   }
 
+  loadLatestEventFromSupabase();
+  startSupabaseLiveSync();
 }
+
 
 function normalizeName(value) {
   return value.trim().replace(/\s+/g, " ");
+}
+
+function setEditingLocked(isLocked) {
+  const editableSelector = [
+    "#syncSupabaseBtn",
+    "#presentInput",
+    "#coreInput",
+    "#togetherGroups",
+    "#numTables",
+    "#pointsRosary",
+    "#pointsYouth",
+    "#pointsHolyHour",
+    "#pointsService",
+    "#coreMultiplier",
+    "#rosaryBtn",
+    "#youthBtn",
+    "#holyHourBtn",
+    "#serviceBtn"
+  ];
+
+  editableSelector.forEach(selector => {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    element.disabled = isLocked;
+  });
+
+  const summary = document.getElementById("presenceSummary");
+  if (summary && isLocked) {
+    summary.textContent = "Sign in with your name + session code to edit and see collaborators.";
+  }
 }
 
 function isDefaultCoreMember(name) {
@@ -1475,6 +1536,7 @@ function setupAutocomplete(
         // 🔑 removing PRESENT also removes CORE
         if (targetArray === presentList) {
           removePersonFromList(coreList, name);
+          deleteAttendeeFromSupabase(name);
           listRenderers.coreSelected?.();
         }
 
@@ -1930,9 +1992,13 @@ const defaultSessionCode = getInitialSessionCode();
 if (sessionCodeInput && !sessionCodeInput.value.trim()) {
   sessionCodeInput.value = defaultSessionCode;
 }
-connectCollabSession();
-loadLatestEventFromSupabase();
-startSupabaseLiveSync();
+
+setEditingLocked(true);
+
+const initialStatus = document.getElementById("collabStatus");
+if (initialStatus) {
+  initialStatus.textContent = "Collab: Sign in with your name + session code";
+}
 
 
 
