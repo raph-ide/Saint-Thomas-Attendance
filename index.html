@@ -523,6 +523,17 @@ li {
   gap: 10px;
 }
 
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-row button {
+  flex: 1;
+  min-width: 180px;
+}
+
 .selected-list {
   min-height: 52px;
   padding: 8px;
@@ -566,6 +577,13 @@ li {
 body.dark-mode .selected-list {
   background: #1f1f21;
   border-color: #3a3a3c;
+}
+
+body.dark-mode .action-row button {
+  background: #3a3a3c;
+  border: 1px solid #48484a;
+  color: #f2f2f7;
+  box-shadow: none;
 }
 
 body.dark-mode .section-caption {
@@ -700,7 +718,10 @@ body.dark-mode .suggestion-item.active {
     <input id="presentInput" placeholder="Search or type a full name, then press Enter" autocomplete="off" aria-autocomplete="list" aria-controls="presentSuggestions">
     <div id="presentSuggestions" class="suggestions" role="listbox"></div>
   </div>
-  <button type="button" id="syncSupabaseBtn" onclick="saveEventToSupabase()">Sync to Supabase</button>
+  <div class="action-row">
+    <button type="button" id="syncSupabaseBtn" onclick="saveEventToSupabase()">Sync to Supabase</button>
+    <button type="button" class="secondary" onclick="clearAttendanceList()">Start New Attendance List</button>
+  </div>
   <div id="presentSelected" class="selected-list"></div>
   </div>
 </div>
@@ -964,6 +985,25 @@ async function saveEventToSupabase() {
   }
 
   alert("Attendance saved to Supabase successfully.");
+}
+
+function clearAttendanceList(skipConfirmation = false) {
+  if (!skipConfirmation && (presentList.length || coreList.length || tables.length)) {
+    const confirmed = window.confirm("Clear all current names, notes, and table assignments to start a new attendance list?");
+    if (!confirmed) return;
+  }
+
+  presentList.splice(0, presentList.length);
+  coreList.splice(0, coreList.length);
+  tables.splice(0, tables.length);
+
+  const togetherInput = document.getElementById("togetherGroups");
+  if (togetherInput) togetherInput.value = "";
+
+  Object.values(listRenderers).forEach(render => render());
+  renderTables();
+  updateCopyList();
+  publishCollabState();
 }
 
 function getInitialSessionCode() {
